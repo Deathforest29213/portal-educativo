@@ -2118,6 +2118,422 @@ h1 {
   transform: scale(1.06);
 }
 
+.board-game {
+  --board-ink: #182235;
+  --board-muted: #647086;
+  --board-line: #dce4ef;
+  --board-surface: #ffffff;
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+  color: var(--board-ink);
+}
+
+.board-game-setup {
+  min-height: 72vh;
+  align-content: center;
+}
+
+.board-hero,
+.board-setup-card,
+.board-status-panel,
+.board-table-wrap,
+.board-turn-panel {
+  border: 1px solid rgba(23, 27, 34, 0.1);
+  border-radius: 22px;
+  background: var(--board-surface);
+  box-shadow: 0 18px 42px rgba(32, 48, 74, 0.1);
+}
+
+.board-hero {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 30px;
+  text-align: center;
+}
+
+.board-hero h2,
+.board-status-panel h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 1.02;
+}
+
+.board-hero p,
+.board-status-panel p,
+.board-setup-card p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--board-muted);
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.board-setup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+  gap: 18px;
+}
+
+.board-setup-card {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 24px;
+}
+
+.board-setup-card h3 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.board-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.board-choice-grid button,
+.board-player-count button {
+  border: 2px solid transparent;
+  border-radius: 18px;
+  background: #f8fafc;
+  color: var(--board-ink);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.board-choice-grid button {
+  display: grid;
+  gap: 6px;
+  min-height: 132px;
+  padding: 16px;
+  text-align: left;
+}
+
+.board-choice-grid button.is-selected {
+  border-color: var(--board-tone);
+  background: color-mix(in srgb, var(--board-tone) 12%, #ffffff);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--board-tone) 22%, transparent);
+}
+
+.board-choice-grid strong {
+  font-size: 1.08rem;
+}
+
+.board-choice-grid span,
+.board-choice-grid small {
+  color: var(--board-muted);
+  font-weight: 850;
+}
+
+.board-player-count {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.board-player-count button {
+  min-height: 78px;
+  font-size: 1.6rem;
+}
+
+.board-player-count button.is-selected {
+  border-color: #4285f4;
+  background: #e8f0fe;
+  color: #174ea6;
+}
+
+.board-start-button {
+  justify-self: center;
+  min-width: min(100%, 320px);
+  min-height: 58px;
+  font-size: 1.08rem;
+}
+
+.board-status-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(420px, 1.05fr);
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+}
+
+.board-status-panel > div:first-child {
+  display: grid;
+  gap: 8px;
+}
+
+.board-score-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.board-player-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "mark name"
+    "mark score";
+  align-items: center;
+  gap: 2px 10px;
+  min-height: 78px;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.board-player-card.is-active {
+  border-color: var(--player-color);
+  background: color-mix(in srgb, var(--player-color) 11%, #ffffff);
+}
+
+.board-player-card .board-marker {
+  grid-area: mark;
+}
+
+.board-player-card strong {
+  grid-area: name;
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-player-card em {
+  grid-area: score;
+  color: var(--board-muted);
+  font-size: 0.92rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.board-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 18px;
+  align-items: start;
+}
+
+.board-table-wrap,
+.board-turn-panel {
+  padding: 18px;
+}
+
+.operation-board {
+  display: grid;
+  grid-template-columns: repeat(var(--board-size), minmax(38px, 1fr));
+  gap: 6px;
+}
+
+.board-row-fragment {
+  display: contents;
+}
+
+.board-axis,
+.board-cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  font-weight: 950;
+}
+
+.board-axis {
+  background: #171b22;
+  color: #ffffff;
+  font-size: clamp(0.86rem, 1.4vw, 1.1rem);
+}
+
+.board-corner {
+  background: #f2c230;
+  color: #171b22;
+}
+
+.board-cell {
+  border: 2px solid var(--board-line);
+  background: #f8fafc;
+  color: var(--board-ink);
+}
+
+.board-cell.is-claimed {
+  border-color: color-mix(in srgb, var(--player-color, #4285f4) 45%, var(--board-line));
+  background: color-mix(in srgb, var(--player-color, #4285f4) 12%, #ffffff);
+}
+
+.board-marker {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--player-color);
+  color: #ffffff;
+  font-size: 1.45rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.board-marker--triangle,
+.board-marker--diamond {
+  border-radius: 12px;
+}
+
+.board-marker--heart,
+.board-marker--star {
+  font-size: 1.25rem;
+}
+
+.board-progress-note {
+  margin-top: 12px;
+  color: var(--board-muted);
+  font-size: 0.95rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.board-turn-panel {
+  display: grid;
+  gap: 16px;
+  position: sticky;
+  top: 14px;
+}
+
+.board-dice-panel,
+.board-problem-card,
+.board-finished {
+  display: grid;
+  gap: 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+  padding: 16px;
+}
+
+.board-dice-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.board-die {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  place-items: center;
+  border: 2px solid var(--board-line);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.board-die span,
+.board-problem-card > span {
+  color: var(--board-muted);
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.board-die strong {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.board-roll-button {
+  min-height: 56px;
+}
+
+.board-end-button {
+  min-height: 52px;
+}
+
+.board-problem-card {
+  border: 2px solid transparent;
+}
+
+.board-problem-card.is-correct {
+  border-color: #34a853;
+  background: #e6f4ea;
+}
+
+.board-problem-card.is-wrong {
+  border-color: #ea4335;
+  background: #fce8e6;
+}
+
+.board-problem-card > strong {
+  font-size: clamp(2rem, 4.8vw, 4rem);
+  line-height: 1;
+  text-align: center;
+}
+
+.board-answer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.board-answer-row input {
+  width: 100%;
+  min-height: 54px;
+  border: 2px solid var(--board-line);
+  border-radius: 14px;
+  padding: 0 14px;
+  color: var(--board-ink);
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.board-answer-row input:disabled {
+  background: #eef2f7;
+}
+
+.board-answer-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.board-finished h3 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.board-final-list {
+  display: grid;
+  gap: 8px;
+}
+
+.board-final-list > div {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-left: 6px solid var(--player-color);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px 12px;
+  font-weight: 900;
+}
+
+.board-final-list span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--player-color);
+  color: #ffffff;
+}
+
+.board-final-list em {
+  color: var(--board-muted);
+  font-style: normal;
+}
+
 .question-panel h2,
 .activity-panel h2,
 .result-panel h2 {
@@ -2230,6 +2646,22 @@ h1 {
   }
 }
 
+@media (max-width: 1180px) {
+  .board-setup-grid,
+  .board-status-panel,
+  .board-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .board-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .board-turn-panel {
+    position: static;
+  }
+}
+
 @media (max-width: 760px) {
   .app-shell {
     width: calc(100vw - 22px);
@@ -2309,7 +2741,8 @@ h1 {
   .guide-original,
   .guide-menu,
   .serpiente-original,
-  .snake-level-menu {
+  .snake-level-menu,
+  .board-game {
     width: calc(100vw - 22px);
   }
 
@@ -2319,8 +2752,44 @@ h1 {
   .snake-difficulty-grid,
   .guide-results-grid,
   .guide-visual-options,
-  .snake-answer-grid {
+  .snake-answer-grid,
+  .board-choice-grid,
+  .board-player-count,
+  .board-score-grid,
+  .board-dice-row,
+  .board-answer-row {
     grid-template-columns: 1fr;
+  }
+
+  .board-hero,
+  .board-setup-card,
+  .board-status-panel,
+  .board-table-wrap,
+  .board-turn-panel {
+    border-radius: 16px;
+    padding: 14px;
+  }
+
+  .board-hero h2,
+  .board-status-panel h2 {
+    font-size: 2rem;
+  }
+
+  .operation-board {
+    gap: 4px;
+    grid-template-columns: repeat(var(--board-size), minmax(24px, 1fr));
+    min-width: 0;
+  }
+
+  .board-axis,
+  .board-cell {
+    border-radius: 8px;
+  }
+
+  .board-marker {
+    width: 30px;
+    height: 30px;
+    font-size: 1rem;
   }
 
   .guide-original-topbar,

@@ -7,7 +7,7 @@ type FitCase = 'normal' | 'tight' | 'compact' | 'compressed' | 'smallest'
 interface PyramidStackProps {
   story: Minihistory
   visibleCount?: number
-  mode?: 'reading' | 'summary'
+  mode?: 'reading' | 'summary' | 'print'
 }
 
 export function PyramidStack({
@@ -18,7 +18,7 @@ export function PyramidStack({
   const visibleLines = story.lines.slice(0, visibleCount)
 
   return (
-    <div className={mode === 'summary' ? 'summary-stack' : 'pyramid'}>
+    <div className={mode === 'summary' ? 'summary-stack' : mode === 'print' ? 'print-stack' : 'pyramid'}>
       {visibleLines.map((item, index) => {
         const parts = getLineParts(story.lines, index)
         const isActive = index === visibleLines.length - 1
@@ -33,6 +33,8 @@ export function PyramidStack({
             className={
               mode === 'summary'
                 ? 'summary-line'
+                : mode === 'print'
+                  ? 'print-line'
                 : `pyramid-line ${isActive ? 'active' : ''}`
             }
             style={
@@ -41,6 +43,11 @@ export function PyramidStack({
                     '--summary-width': width,
                     '--summary-font-size': fontSize,
                   } as CSSProperties)
+                : mode === 'print'
+                  ? ({
+                      '--print-width': width,
+                      '--print-font-size': fontSize,
+                    } as CSSProperties)
                 : ({
                     '--line-width': width,
                     '--line-font-size': fontSize,
@@ -78,7 +85,7 @@ function getTextUnits(text: string) {
   return text.trim().replace(/\s+/g, ' ').length
 }
 
-function getLineFontSize(fitCase: FitCase, mode: 'reading' | 'summary') {
+function getLineFontSize(fitCase: FitCase, mode: 'reading' | 'summary' | 'print') {
   if (mode === 'summary') {
     const sizes: Record<FitCase, string> = {
       normal: '0.98rem',
@@ -86,6 +93,18 @@ function getLineFontSize(fitCase: FitCase, mode: 'reading' | 'summary') {
       compact: '0.86rem',
       compressed: '0.8rem',
       smallest: '0.74rem',
+    }
+
+    return sizes[fitCase]
+  }
+
+  if (mode === 'print') {
+    const sizes: Record<FitCase, string> = {
+      normal: '1.34rem',
+      tight: '1.24rem',
+      compact: '1.14rem',
+      compressed: '1.04rem',
+      smallest: '0.94rem',
     }
 
     return sizes[fitCase]

@@ -11,6 +11,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import LecturaPiramideActivity from './activities/lectura-piramide/LecturaPiramideActivity'
 import { LECTURA_PIRAMIDE_IMAGE_ASSETS } from './activities/lectura-piramide/data/imageUrls'
 import GuiaLenguajeActivity from './activities/guia-lenguaje/GuiaLenguajeActivity'
+import OperacionesTableroActivity from './activities/operaciones-tablero/OperacionesTableroActivity'
 import SerpienteMatematicaActivity from './activities/serpiente/SerpienteMatematicaActivity'
 import { activities, activityQuestions } from './data/activities'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
@@ -333,6 +334,7 @@ const activityAssets: Record<string, string[]> = {
   'lectura-piramide': ['/', ...LECTURA_PIRAMIDE_IMAGE_ASSETS],
   'guia-lenguaje': ['/', ...GUIA_IMAGE_ASSETS],
   'serpiente-matematica': ['/', ...SERPIENTE_ASSETS],
+  'operaciones-tablero': ['/'],
 }
 
 function App() {
@@ -586,6 +588,7 @@ type ActivityViewProps = {
 function ActivityView({ activity, download, isOnline, onBack, onDownload }: ActivityViewProps) {
   const isGuide = activity.id === 'guia-lenguaje'
   const isSnake = activity.id === 'serpiente-matematica'
+  const isBoardGame = activity.id === 'operaciones-tablero'
   const [guideSelection, setGuideSelection] = useState<GuideActivityKey | null>(null)
   const [snakeDifficultyKey, setSnakeDifficultyKey] = useState<SnakeDifficultyKey>('easy')
   const [snakeQuestions, setSnakeQuestions] = useState<ActivityQuestion[] | null>(null)
@@ -689,6 +692,8 @@ function ActivityView({ activity, download, isOnline, onBack, onDownload }: Acti
         <GuiaLenguajeActivity />
       ) : activity.id === 'serpiente-matematica' ? (
         <SerpienteMatematicaActivity />
+      ) : isBoardGame ? (
+        <OperacionesTableroActivity />
       ) : isGuide && !guideSelection ? (
         <GuideActivityMenu onStart={startGuideActivity} />
       ) : isSnake && !snakeQuestions ? (

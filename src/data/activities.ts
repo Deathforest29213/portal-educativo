@@ -28,6 +28,15 @@ export const activities: Activity[] = [
     version: '0.2.0',
     source: 'serpiente/Serpiente.html',
   },
+  {
+    id: 'operaciones-tablero',
+    title: 'Tablero de Operaciones',
+    area: 'Matemática',
+    description: 'Juego por turnos con dados virtuales, tablero y líneas de tres.',
+    level: 'Operaciones',
+    version: '0.1.0',
+    source: 'portal-educativo/src/activities/operaciones-tablero/',
+  },
 ]
 
 export const activityQuestions: Record<string, ActivityQuestion[]> = {

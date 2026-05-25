@@ -8,6 +8,7 @@ import { CollectionScreen } from './screens/CollectionScreen'
 import { CompleteScreen } from './screens/CompleteScreen'
 import { ExerciseScreen } from './screens/ExerciseScreen'
 import { MenuScreen } from './screens/MenuScreen'
+import { PrintScreen } from './screens/PrintScreen'
 import { QuizScreen } from './screens/QuizScreen'
 import type { AppView, QuestionFeedback } from './types'
 import { useTonePlayer } from './utils/audio'
@@ -141,8 +142,13 @@ function LecturaPiramideActivity({
         <CollectionScreen
           stories={STORIES}
           onBack={() => setView('menu')}
+          onOpenPrint={() => setView('print')}
           onSelectStory={(nextStoryId) => startStory(nextStoryId, 'collection')}
         />
+      ) : null}
+
+      {view === 'print' ? (
+        <PrintScreen stories={STORIES} onBack={() => setView('collection')} />
       ) : null}
 
       {view === 'exercise' && story ? (

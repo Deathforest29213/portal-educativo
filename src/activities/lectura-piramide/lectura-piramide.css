@@ -99,7 +99,8 @@
 .lp-shell .pyramid-panel,
 .lp-shell .summary-panel,
 .lp-shell .question-panel,
-.lp-shell .result-card {
+.lp-shell .result-card,
+.lp-shell .print-panel {
   border-radius: 30px;
 }
 
@@ -360,6 +361,12 @@
   margin-top: 26px;
 }
 
+.lp-shell .collection-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 22px;
+}
+
 .lp-shell .story-card {
   display: flex;
   min-height: 270px;
@@ -501,7 +508,8 @@
 }
 
 .lp-shell .pyramid-line,
-.lp-shell .summary-line {
+.lp-shell .summary-line,
+.lp-shell .print-line {
   align-self: center;
   width: var(--line-width);
   max-width: 100%;
@@ -601,6 +609,179 @@
   padding: 10px 14px;
   font-size: var(--summary-font-size, var(--lp-pyramid-summary-font-size));
   line-height: 1.12;
+}
+
+.lp-shell .print-workspace {
+  display: grid;
+  gap: 22px;
+}
+
+.lp-shell .print-panel {
+  display: grid;
+  gap: 22px;
+  padding: 30px;
+}
+
+.lp-shell .print-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.lp-shell .result-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+  opacity: 0.58;
+}
+
+.lp-shell .print-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.lp-shell .print-select-card {
+  display: grid;
+  min-height: 132px;
+  grid-template-columns: auto minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 20px;
+  padding: 14px;
+  cursor: pointer;
+}
+
+.lp-shell .print-select-card.is-selected {
+  border-color: rgb(66 133 244 / 0.52);
+  box-shadow:
+    0 0 0 3px rgb(66 133 244 / 0.12),
+    var(--lp-shadow-md);
+}
+
+.lp-shell .print-select-card input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--lp-blue);
+}
+
+.lp-shell .print-select-card span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.lp-shell .print-select-card strong {
+  color: var(--lp-text);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.lp-shell .print-select-card small {
+  color: var(--lp-muted);
+  font-weight: 800;
+}
+
+.lp-shell .print-select-card img {
+  width: 92px;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  background: #eef3fb;
+  object-fit: cover;
+}
+
+.lp-shell .print-preview {
+  display: grid;
+  justify-items: center;
+  gap: 28px;
+}
+
+.lp-shell .print-empty {
+  width: min(100%, 820px);
+  padding: 30px;
+  border-radius: 28px;
+}
+
+.lp-shell .print-story-page {
+  width: min(100%, 8.5in);
+  min-height: 11in;
+  display: grid;
+  place-items: center;
+  border-radius: 26px;
+  background: #f8fafc;
+  padding: 0.38in;
+  box-shadow: var(--lp-shadow-lg);
+}
+
+.lp-shell .print-cut-card {
+  display: grid;
+  width: 100%;
+  min-height: 10.2in;
+  grid-template-rows: auto minmax(4.7in, 1fr) auto;
+  align-content: stretch;
+  gap: 0.08in;
+  border: 2px dashed #9db4d6;
+  border-radius: 0.28in;
+  background: #ffffff;
+  padding: 0.26in;
+}
+
+.lp-shell .print-story-header {
+  display: grid;
+  justify-items: center;
+  gap: 0.04in;
+  text-align: center;
+}
+
+.lp-shell .print-story-header span {
+  color: var(--lp-peach-strong);
+  font-size: 0.14in;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.lp-shell .print-story-header h2 {
+  margin: 0;
+  color: var(--lp-text);
+  font-size: 0.34in;
+  letter-spacing: 0;
+  line-height: 1.06;
+}
+
+.lp-shell .print-image-frame {
+  display: grid;
+  min-height: 4.7in;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #d7e0ee;
+  border-radius: 0.2in;
+  background: #f4f8ff;
+}
+
+.lp-shell .print-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.lp-shell .print-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  gap: 0.07in;
+  padding-top: 0.08in;
+}
+
+.lp-shell .print-line {
+  width: var(--print-width);
+  border: 1px solid #dce6f2;
+  border-radius: 0.12in;
+  box-shadow: none;
+  color: #5f6f86;
+  padding: 0.11in 0.14in;
+  font-size: var(--print-font-size, 1.22rem);
+  font-weight: 900;
+  line-height: 1.06;
+  animation: none;
 }
 
 .lp-shell .option-list {
@@ -854,6 +1035,7 @@
 @media (max-width: 1120px) {
   .lp-shell .menu-grid,
   .lp-shell .collection-grid,
+  .lp-shell .print-selection-grid,
   .lp-shell .reading-grid,
   .lp-shell .quiz-grid {
     grid-template-columns: 1fr;
@@ -923,13 +1105,121 @@
   }
 
   .lp-shell .pyramid-line,
-  .lp-shell .summary-line {
+  .lp-shell .summary-line,
+  .lp-shell .print-line {
     width: 100%;
     white-space: normal;
   }
 
   .lp-shell .result-actions > button,
-  .lp-shell .controls > button {
+  .lp-shell .controls > button,
+  .lp-shell .print-action-row > button {
     width: 100%;
+  }
+}
+
+@page {
+  size: letter;
+  margin: 0.3in;
+}
+
+@media print {
+  :root {
+    background: #ffffff;
+  }
+
+  body {
+    min-width: 0;
+    background: #ffffff;
+  }
+
+  .activity-header,
+  .lp-shell .print-controls {
+    display: none !important;
+  }
+
+  .app-shell.activity-view {
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .lp-shell {
+    min-height: 0;
+    color: #21304a;
+  }
+
+  .lp-page {
+    display: block;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: #ffffff;
+    overflow: visible;
+  }
+
+  .lp-shell .print-workspace,
+  .lp-shell .print-preview {
+    display: block;
+  }
+
+  .lp-shell .print-story-page {
+    display: block;
+    width: 100%;
+    min-height: 10.4in;
+    padding: 0;
+    break-after: page;
+    page-break-after: always;
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: none;
+  }
+
+  .lp-shell .print-story-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .lp-shell .print-cut-card {
+    min-height: 10.32in;
+    border-color: #9ba9bc;
+    border-radius: 0.22in;
+    padding: 0.22in;
+  }
+
+  .lp-shell .print-story-header span {
+    color: #d45f3e;
+  }
+
+  .lp-shell .print-story-header h2 {
+    font-size: 0.32in;
+  }
+
+  .lp-shell .print-image-frame {
+    min-height: 4.85in;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .lp-shell .print-stack {
+    gap: 0.06in;
+  }
+
+  .lp-shell .print-line {
+    border-color: #d6e0ec;
+    background: #ffffff;
+    color: #5f6f86;
+    animation: none;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .lp-shell .prefix {
+    color: #5f6f86;
+  }
+
+  .lp-shell .suffix {
+    color: #4285f4;
   }
 }

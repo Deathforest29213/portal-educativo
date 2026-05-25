@@ -1,4 +1,4 @@
-export type AppView = 'menu' | 'collection' | 'exercise' | 'quiz' | 'complete'
+export type AppView = 'menu' | 'collection' | 'exercise' | 'quiz' | 'complete' | 'print'
 
 export interface PyramidLine {
   text: string

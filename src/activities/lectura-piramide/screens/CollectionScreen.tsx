@@ -4,12 +4,14 @@ import { TopBar } from '../components/TopBar'
 interface CollectionScreenProps {
   stories: Minihistory[]
   onBack: () => void
+  onOpenPrint: () => void
   onSelectStory: (storyId: string) => void
 }
 
 export function CollectionScreen({
   stories,
   onBack,
+  onOpenPrint,
   onSelectStory,
 }: CollectionScreenProps) {
   return (
@@ -22,6 +24,11 @@ export function CollectionScreen({
           Cada historia está armada para que la imagen y la pirámide avancen
           juntas.
         </p>
+        <div className="collection-actions">
+          <button className="result-button" type="button" onClick={onOpenPrint}>
+            Imprimir PDF
+          </button>
+        </div>
 
         <div className="collection-grid">
           {stories.map((story) => {
