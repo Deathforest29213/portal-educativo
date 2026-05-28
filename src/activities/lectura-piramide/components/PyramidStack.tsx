@@ -100,11 +100,11 @@ function getLineFontSize(fitCase: FitCase, mode: 'reading' | 'summary' | 'print'
 
   if (mode === 'print') {
     const sizes: Record<FitCase, string> = {
-      normal: '1.34rem',
-      tight: '1.24rem',
-      compact: '1.14rem',
-      compressed: '1.04rem',
-      smallest: '0.94rem',
+      normal: '1.58rem',
+      tight: '1.48rem',
+      compact: '1.36rem',
+      compressed: '1.22rem',
+      smallest: '1.08rem',
     }
 
     return sizes[fitCase]

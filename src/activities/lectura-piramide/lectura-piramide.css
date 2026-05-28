@@ -716,13 +716,13 @@
   display: grid;
   width: 100%;
   min-height: 10.2in;
-  grid-template-rows: auto minmax(4.7in, 1fr) auto;
+  grid-template-rows: auto auto 1fr;
   align-content: stretch;
-  gap: 0.08in;
+  gap: 0;
   border: 2px dashed #9db4d6;
   border-radius: 0.28in;
   background: #ffffff;
-  padding: 0.26in;
+  padding: 0.18in;
 }
 
 .lp-shell .print-story-header {
@@ -748,36 +748,37 @@
 }
 
 .lp-shell .print-image-frame {
-  display: grid;
-  min-height: 4.7in;
-  place-items: center;
+  display: block;
+  min-height: 0;
   overflow: hidden;
-  border: 1px solid #d7e0ee;
-  border-radius: 0.2in;
-  background: #f4f8ff;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .lp-shell .print-image-frame img {
+  display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   object-fit: contain;
 }
 
 .lp-shell .print-stack {
   display: flex;
   flex-direction: column;
-  justify-content: end;
-  gap: 0.07in;
-  padding-top: 0.08in;
+  justify-content: start;
+  gap: 0;
+  padding-top: 0;
 }
 
 .lp-shell .print-line {
   width: var(--print-width);
   border: 1px solid #dce6f2;
-  border-radius: 0.12in;
+  border-radius: 0;
   box-shadow: none;
   color: #5f6f86;
-  padding: 0.11in 0.14in;
+  margin-top: -1px;
+  padding: 0.105in 0.14in;
   font-size: var(--print-font-size, 1.22rem);
   font-weight: 900;
   line-height: 1.06;
@@ -1185,7 +1186,7 @@
     min-height: 10.32in;
     border-color: #9ba9bc;
     border-radius: 0.22in;
-    padding: 0.22in;
+    padding: 0.16in;
   }
 
   .lp-shell .print-story-header span {
@@ -1197,19 +1198,25 @@
   }
 
   .lp-shell .print-image-frame {
-    min-height: 4.85in;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 
   .lp-shell .print-stack {
-    gap: 0.06in;
+    gap: 0;
+    padding-top: 0;
   }
 
   .lp-shell .print-line {
     border-color: #d6e0ec;
+    border-radius: 0;
     background: #ffffff;
     color: #5f6f86;
+    margin-top: -1px;
     animation: none;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
