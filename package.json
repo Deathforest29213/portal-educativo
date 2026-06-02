@@ -12,6 +12,7 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
     "lucide-react": "^0.468.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"

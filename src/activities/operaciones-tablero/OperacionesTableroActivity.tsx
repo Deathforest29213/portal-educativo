@@ -1,211 +1,25 @@
+import { Dice5, UsersRound } from 'lucide-react'
 import { useMemo, useState, type CSSProperties } from 'react'
+import { DIFFICULTIES, PLAYER_NICKNAMES, PLAYER_PRESETS, getDifficulty } from './data/config'
+import {
+  cellKey,
+  getLineBonuses,
+  makePlayers,
+  makeRoll,
+  shapeSymbol,
+} from './domain/board'
+import type { ClaimedCell, DifficultyKey, Operation, Player, PlayerPreset, Roll } from './types'
 
-type DifficultyKey = 'easy' | 'medium' | 'hard' | 'expert'
-type Operation = '+' | '-' | 'x' | '/'
-type Shape = 'circle' | 'star' | 'heart' | 'triangle' | 'diamond'
 type Screen = 'setup' | 'playing' | 'finished'
 type Feedback = 'correct' | 'wrong' | null
 
-type Difficulty = {
-  key: DifficultyKey
-  label: string
-  maxNumber: number
-  operations: Operation[]
-  tone: string
-}
-
-type Player = {
-  color: string
-  id: string
-  name: string
-  score: number
-  shape: Shape
-}
-
-type ClaimedCell = {
-  playerId: string
-  shape: Shape
-  color: string
-}
-
-type Roll = {
-  row: number
-  col: number
-  operation: Operation
-  answer: number
-  prompt: string
-}
-
-const DIFFICULTIES: Difficulty[] = [
-  { key: 'easy', label: 'Fácil', maxNumber: 3, operations: ['+'], tone: '#34a853' },
-  { key: 'medium', label: 'Medio', maxNumber: 5, operations: ['+', '-'], tone: '#4285f4' },
-  { key: 'hard', label: 'Difícil', maxNumber: 7, operations: ['+', '-', 'x'], tone: '#fbbc04' },
-  { key: 'expert', label: 'Experto', maxNumber: 9, operations: ['+', '-', 'x', '/'], tone: '#ea4335' },
-]
-
-const PLAYER_NAMES = [
-  'Sofi',
-  'Tomas',
-  'Martina',
-  'Diego',
-  'Emilia',
-  'Lucas',
-  'Antonia',
-  'Mateo',
-  'Jose',
-  'Florencia',
-  'Vicente',
-  'Isidora',
-  'Agustin',
-  'Renata',
-  'Benjamin',
-]
-
-const PLAYER_COLORS = ['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#9c27b0']
-const PLAYER_SHAPES: Shape[] = ['circle', 'star', 'heart', 'triangle', 'diamond']
-
-function shuffle<T>(items: T[]) {
-  return [...items].sort(() => Math.random() - 0.5)
-}
-
-function makePlayers(count: number): Player[] {
-  const names = shuffle(PLAYER_NAMES)
-  const colors = shuffle(PLAYER_COLORS)
-  const shapes = shuffle(PLAYER_SHAPES)
-
-  return Array.from({ length: count }, (_, index) => ({
-    id: `player-${index + 1}`,
-    name: names[index],
-    color: colors[index],
-    shape: shapes[index],
-    score: 0,
-  }))
-}
-
-function getDifficulty(key: DifficultyKey) {
-  return DIFFICULTIES.find((difficulty) => difficulty.key === key) ?? DIFFICULTIES[0]
-}
-
-function cellKey(row: number, col: number) {
-  return `${row}-${col}`
-}
-
-function lineKey(playerId: string, cells: string[]) {
-  return `${playerId}:${cells.join('|')}`
-}
-
-function getProblem(row: number, col: number, operation: Operation): Roll {
-  if (operation === '+') {
-    return { row, col, operation, answer: row + col, prompt: `${row} + ${col}` }
-  }
-
-  if (operation === '-') {
-    return { row, col, operation, answer: row - col, prompt: `${row} - ${col}` }
-  }
-
-  if (operation === 'x') {
-    return { row, col, operation, answer: row * col, prompt: `${row} x ${col}` }
-  }
-
-  return { row, col, operation, answer: row / col, prompt: `${row} / ${col}` }
-}
-
-function isValidProblem(row: number, col: number, operation: Operation) {
-  if (operation === '-') {
-    return row >= col
-  }
-
-  if (operation === '/') {
-    return col !== 0 && row % col === 0
-  }
-
-  return true
-}
-
-function makeRoll(difficulty: Difficulty, claimed: Record<string, ClaimedCell>): Roll | null {
-  const candidates: Roll[] = []
-
-  for (const operation of difficulty.operations) {
-    for (let row = 0; row <= difficulty.maxNumber; row += 1) {
-      for (let col = 0; col <= difficulty.maxNumber; col += 1) {
-        if (claimed[cellKey(row, col)] || !isValidProblem(row, col, operation)) {
-          continue
-        }
-
-        candidates.push(getProblem(row, col, operation))
-      }
-    }
-  }
-
-  if (candidates.length === 0) {
-    return null
-  }
-
-  return candidates[Math.floor(Math.random() * candidates.length)]
-}
-
-function getLineBonuses(
-  row: number,
-  col: number,
-  playerId: string,
-  claimed: Record<string, ClaimedCell>,
-  maxNumber: number,
-  awardedLines: Set<string>,
-) {
-  const directions = [
-    [0, 1],
-    [1, 0],
-    [1, 1],
-    [1, -1],
-  ]
-  const bonuses: string[] = []
-
-  for (const [dr, dc] of directions) {
-    for (let offset = -2; offset <= 0; offset += 1) {
-      const cells = Array.from({ length: 3 }, (_, index) => {
-        const nextRow = row + (offset + index) * dr
-        const nextCol = col + (offset + index) * dc
-        return { row: nextRow, col: nextCol, key: cellKey(nextRow, nextCol) }
-      })
-
-      const isInside = cells.every(
-        (cell) =>
-          cell.row >= 0 &&
-          cell.row <= maxNumber &&
-          cell.col >= 0 &&
-          cell.col <= maxNumber,
-      )
-      if (!isInside) {
-        continue
-      }
-
-      const allOwned = cells.every((cell) => claimed[cell.key]?.playerId === playerId)
-      const bonusKey = lineKey(playerId, cells.map((cell) => cell.key))
-      if (allOwned && !awardedLines.has(bonusKey)) {
-        bonuses.push(bonusKey)
-      }
-    }
-  }
-
-  return bonuses
-}
-
-function shapeSymbol(shape: Shape) {
-  const symbols: Record<Shape, string> = {
-    circle: '●',
-    star: '★',
-    heart: '♥',
-    triangle: '▲',
-    diamond: '◆',
-  }
-
-  return symbols[shape]
-}
+const MAX_ROLLS_PER_TURN = 2
 
 export default function OperacionesTableroActivity() {
   const [screen, setScreen] = useState<Screen>('setup')
   const [difficultyKey, setDifficultyKey] = useState<DifficultyKey>('easy')
   const [playerCount, setPlayerCount] = useState(3)
+  const [playerPresets, setPlayerPresets] = useState<PlayerPreset[]>(PLAYER_PRESETS)
   const [players, setPlayers] = useState<Player[]>([])
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0)
   const [claimed, setClaimed] = useState<Record<string, ClaimedCell>>({})
@@ -214,18 +28,36 @@ export default function OperacionesTableroActivity() {
   const [feedback, setFeedback] = useState<Feedback>(null)
   const [message, setMessage] = useState('Tira los dados para comenzar el turno.')
   const [awardedLineKeys, setAwardedLineKeys] = useState<Set<string>>(() => new Set())
+  const [rollsThisTurn, setRollsThisTurn] = useState(0)
+  const [isRolling, setIsRolling] = useState(false)
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false)
 
   const difficulty = getDifficulty(difficultyKey)
   const numbers = useMemo(
     () => Array.from({ length: difficulty.maxNumber + 1 }, (_, index) => index),
     [difficulty.maxNumber],
   )
+  const selectedPlayerPresets = playerPresets.slice(0, playerCount)
   const currentPlayer = players[currentPlayerIndex]
   const claimedCount = Object.keys(claimed).length
   const totalCells = numbers.length * numbers.length
+  const isTurnFinished = !roll && feedback !== null
+  const rollButtonLabel = isRolling
+    ? 'Tirando...'
+    : rollsThisTurn === 0
+      ? 'Tirar dados'
+      : rollsThisTurn < MAX_ROLLS_PER_TURN
+        ? 'Tirar otra vez'
+        : 'Sin tiradas'
+  const canRoll = !isRolling && rollsThisTurn < MAX_ROLLS_PER_TURN
+  const resolverText = roll
+    ? `${roll.prompt} = ?`
+    : isTurnFinished
+      ? 'Turno finalizado'
+    : `Turno de ${currentPlayer?.name ?? 'jugador'}, tira los dados.`
 
   function startGame() {
-    const nextPlayers = makePlayers(playerCount)
+    const nextPlayers = makePlayers(playerCount, selectedPlayerPresets)
     setPlayers(nextPlayers)
     setCurrentPlayerIndex(0)
     setClaimed({})
@@ -233,8 +65,27 @@ export default function OperacionesTableroActivity() {
     setAnswer('')
     setFeedback(null)
     setAwardedLineKeys(new Set())
+    setRollsThisTurn(0)
+    setIsRolling(false)
+    setShowFinishConfirm(false)
     setMessage(`${nextPlayers[0].name} parte tirando los dados.`)
     setScreen('playing')
+  }
+
+  function randomizePlayerName(playerIndex: number) {
+    setPlayerPresets((currentPresets) => {
+      const usedNames = new Set(currentPresets.map((player) => player.name))
+      const availableNames = PLAYER_NICKNAMES.filter((name) => !usedNames.has(name))
+
+      if (availableNames.length === 0) {
+        return currentPresets
+      }
+
+      const nextName = availableNames[Math.floor(Math.random() * availableNames.length)]
+      return currentPresets.map((player, index) =>
+        index === playerIndex ? { ...player, name: nextName } : player,
+      )
+    })
   }
 
   function resetGame() {
@@ -246,42 +97,70 @@ export default function OperacionesTableroActivity() {
     setAnswer('')
     setFeedback(null)
     setAwardedLineKeys(new Set())
+    setRollsThisTurn(0)
+    setIsRolling(false)
+    setShowFinishConfirm(false)
     setMessage('Tira los dados para comenzar el turno.')
   }
 
-  function finishGame() {
+  function requestFinishGame() {
+    setShowFinishConfirm(true)
+  }
+
+  function cancelFinishGame() {
+    setShowFinishConfirm(false)
+  }
+
+  function confirmFinishGame() {
     setRoll(null)
     setAnswer('')
     setFeedback(null)
+    setRollsThisTurn(0)
+    setIsRolling(false)
+    setShowFinishConfirm(false)
     setScreen('finished')
     setMessage('Partida terminada. Revisen el puntaje final.')
   }
 
   function rollDice() {
+    if (!canRoll || !currentPlayer) {
+      return
+    }
+
     const nextRoll = makeRoll(difficulty, claimed)
     setFeedback(null)
     setAnswer('')
+    setIsRolling(true)
 
     if (!nextRoll) {
       setRoll(null)
+      setIsRolling(false)
       setMessage('No quedan casillas disponibles para esta dificultad.')
       setScreen('finished')
       return
     }
 
     setRoll(nextRoll)
+    setRollsThisTurn((count) => Math.min(count + 1, MAX_ROLLS_PER_TURN))
     setMessage(`${currentPlayer.name}, resuelve la operación para marcar la casilla.`)
+    window.setTimeout(() => setIsRolling(false), 720)
   }
 
   function submitAnswer() {
-    if (!roll || !currentPlayer || answer.trim() === '') {
+    if (!roll || !currentPlayer || isRolling || answer.trim() === '') {
       return
     }
 
     const numericAnswer = Number(answer)
     if (!Number.isFinite(numericAnswer) || numericAnswer !== roll.answer) {
+      const nextPlayerIndex = (currentPlayerIndex + 1) % players.length
       setFeedback('wrong')
-      setMessage('Revisa el resultado e intenta de nuevo.')
+      setRoll(null)
+      setAnswer('')
+      setRollsThisTurn(0)
+      setIsRolling(false)
+      setCurrentPlayerIndex(nextPlayerIndex)
+      setMessage(`${currentPlayer.name} pierde el turno. Sigue ${players[nextPlayerIndex].name}.`)
       return
     }
 
@@ -318,6 +197,8 @@ export default function OperacionesTableroActivity() {
     setFeedback('correct')
     setRoll(null)
     setAnswer('')
+    setRollsThisTurn(0)
+    setIsRolling(false)
 
     if (Object.keys(nextClaimed).length >= totalCells) {
       setScreen('finished')
@@ -335,68 +216,138 @@ export default function OperacionesTableroActivity() {
 
   if (screen === 'setup') {
     return (
-      <section className="board-game board-game-setup">
-        <div className="board-hero">
-          <span className="task-badge">Matemática en turnos</span>
-          <h2>Tablero de Operaciones</h2>
-          <p>
-            Tiren los dados virtuales, resuelvan la operación y marquen una línea de tres
-            para sumar puntos extra.
-          </p>
+      <section
+        className="board-game board-game-setup"
+        style={{ '--board-tone': difficulty.tone } as CSSProperties}
+      >
+        <div className="board-setup-shell">
+          <div className="board-hero">
+            <span className="task-badge">Matemática en turnos</span>
+            <h2>Tablero de Operaciones</h2>
+            <p>
+              Elige dificultad y participantes antes de comenzar la partida.
+            </p>
+          </div>
+
+          <div className="board-setup-main">
+            <article className="board-setup-section">
+              <div className="board-section-heading">
+                <span>Dificultad</span>
+                <strong>{difficulty.description}</strong>
+              </div>
+              <div className="board-choice-grid" role="radiogroup" aria-label="Dificultad">
+                {DIFFICULTIES.map((item) => {
+                  const isSelected = item.key === difficultyKey
+
+                  return (
+                    <button
+                      aria-checked={isSelected}
+                      className={isSelected ? 'is-selected' : ''}
+                      key={item.key}
+                      onClick={() => setDifficultyKey(item.key)}
+                      role="radio"
+                      style={{ '--board-card-tone': item.tone } as CSSProperties}
+                      type="button"
+                    >
+                      <span className="board-operation-icons" aria-hidden="true">
+                        {item.operations.map((operation) => (
+                          <span className="board-operation-chip" key={operation}>
+                            {getOperationSymbol(operation)}
+                          </span>
+                        ))}
+                      </span>
+                      <strong>{item.label}</strong>
+                      <span>{item.rangeLabel}</span>
+                      <small>{getOperationCountLabel(item.operations.length)}</small>
+                    </button>
+                  )
+                })}
+              </div>
+            </article>
+
+            <article className="board-setup-section board-participants-section">
+              <div className="board-section-heading">
+                <span>Participantes</span>
+                <strong>Nombres, colores y formas preestablecidas.</strong>
+              </div>
+
+              <div className="board-participants-layout">
+                <div className="board-player-count" role="radiogroup" aria-label="Cantidad de participantes">
+                  {[2, 3, 4, 5].map((count) => (
+                    <button
+                      aria-checked={count === playerCount}
+                      className={count === playerCount ? 'is-selected' : ''}
+                      key={count}
+                      onClick={() => setPlayerCount(count)}
+                      role="radio"
+                      type="button"
+                    >
+                      <UsersRound aria-hidden="true" size={22} strokeWidth={2.5} />
+                      <strong>{count}</strong>
+                      <span>{count === 2 ? 'duplas' : 'jugadores'}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="board-player-preview-grid" aria-label="Jugadores preestablecidos">
+                  {selectedPlayerPresets.map((player, index) => (
+                    <button
+                      className="board-player-preview"
+                      key={`${index}-${player.color}-${player.shape}`}
+                      onClick={() => randomizePlayerName(index)}
+                      type="button"
+                      aria-label={`Cambiar nickname de Jugador ${index + 1}`}
+                      style={{ '--player-color': player.color } as CSSProperties}
+                    >
+                      <span
+                        className={`board-marker board-marker--${player.shape}`}
+                        aria-hidden="true"
+                      >
+                        {shapeSymbol(player.shape)}
+                      </span>
+                      <div>
+                        <small>Jugador {index + 1}</small>
+                        <strong>{player.name}</strong>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <button className="primary-button board-start-button" onClick={startGame} type="button">
+            Comenzar juego
+          </button>
         </div>
-
-        <div className="board-setup-grid">
-          <article className="board-setup-card">
-            <h3>Dificultad</h3>
-            <div className="board-choice-grid">
-              {DIFFICULTIES.map((item) => (
-                <button
-                  className={item.key === difficultyKey ? 'is-selected' : ''}
-                  key={item.key}
-                  onClick={() => setDifficultyKey(item.key)}
-                  style={{ '--board-tone': item.tone } as CSSProperties}
-                  type="button"
-                >
-                  <strong>{item.label}</strong>
-                  <span>0 a {item.maxNumber}</span>
-                  <small>{item.operations.map(formatOperation).join(' ')}</small>
-                </button>
-              ))}
-            </div>
-          </article>
-
-          <article className="board-setup-card">
-            <h3>Participantes</h3>
-            <div className="board-player-count">
-              {[2, 3, 4, 5].map((count) => (
-                <button
-                  className={count === playerCount ? 'is-selected' : ''}
-                  key={count}
-                  onClick={() => setPlayerCount(count)}
-                  type="button"
-                >
-                  {count}
-                </button>
-              ))}
-            </div>
-            <p>El juego asigna nombres, colores y figuras al comenzar.</p>
-          </article>
-        </div>
-
-        <button className="primary-button board-start-button" onClick={startGame} type="button">
-          Comenzar juego
-        </button>
       </section>
     )
   }
 
   return (
-    <section className="board-game board-game-play">
+    <section
+      className={`board-game board-game-play board-game--${difficulty.key}`}
+      style={{ '--board-tone': difficulty.tone } as CSSProperties}
+    >
+      <div className="activity-back-row board-back-row">
+        <button className="activity-back-pill" onClick={resetGame} type="button">
+          ← Volver al menú
+        </button>
+      </div>
+
       <div className="board-status-panel">
-        <div>
-          <span className="task-badge">Dificultad {difficulty.label}</span>
-          <h2>{screen === 'finished' ? 'Resultado final' : 'Turno de juego'}</h2>
+        <div className="board-status-copy">
+          <h2>
+            {screen === 'finished'
+              ? 'Resultado final'
+              : `Turno: ${currentPlayer?.name ?? 'jugador'}`}
+          </h2>
           <p>{message}</p>
+        </div>
+
+        <div className="board-status-metrics" aria-label="Estado de la partida">
+          <span>{claimedCount}/{totalCells} casillas</span>
+          <span>Líneas de 3: +2 pts</span>
         </div>
 
         <div className="board-score-grid">
@@ -418,10 +369,11 @@ export default function OperacionesTableroActivity() {
 
       <div className="board-layout">
         <article className="board-table-wrap">
-          <OperationBoard numbers={numbers} claimed={claimed} />
-          <div className="board-progress-note">
-            Casillas marcadas: {claimedCount}/{totalCells}
+          <div className="board-table-topline">
+            <span className="board-difficulty-pill">Dificultad {difficulty.label}</span>
+            <span>{difficulty.rangeLabel}</span>
           </div>
+          <OperationBoard numbers={numbers} claimed={claimed} />
         </article>
 
         <aside className="board-turn-panel">
@@ -429,49 +381,143 @@ export default function OperacionesTableroActivity() {
             <FinishedPanel players={players} onRestart={resetGame} />
           ) : (
             <>
-              <div className="board-dice-panel">
+              <div className="board-turn-player" style={{ '--player-color': currentPlayer?.color } as CSSProperties}>
+                {currentPlayer ? (
+                  <>
+                    <span className={`board-marker board-marker--${currentPlayer.shape}`}>
+                      {shapeSymbol(currentPlayer.shape)}
+                    </span>
+                    <div>
+                      <small>Jugador actual</small>
+                      <strong>{currentPlayer.name}</strong>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+
+              <div className="board-step-card board-dice-panel">
+                <div className="board-step-heading">
+                  <span className="board-step-number">1</span>
+                  <strong>Tirar dados</strong>
+                </div>
                 <div className="board-dice-row">
                   <DiceValue label="Fila" value={roll?.row ?? '-'} />
                   <DiceValue label="Columna" value={roll?.col ?? '-'} />
                   <DiceValue label="Operación" value={roll ? formatOperation(roll.operation) : '-'} />
                 </div>
-                <button className="primary-button board-roll-button" onClick={rollDice} type="button">
-                  Tirar dados
+                <div className="board-operation-roll" aria-live="polite">
+                  <span>Dado de signo</span>
+                  <strong className={isRolling ? 'is-rolling' : ''}>
+                    {roll ? getOperationSymbol(roll.operation) : '?'}
+                  </strong>
+                  <small>{rollsThisTurn}/{MAX_ROLLS_PER_TURN} tiradas</small>
+                </div>
+                <button
+                  className="primary-button board-roll-button"
+                  disabled={!canRoll}
+                  onClick={rollDice}
+                  type="button"
+                >
+                  {rollButtonLabel}
                 </button>
               </div>
 
-              <div className={`board-problem-card ${feedback ? `is-${feedback}` : ''}`}>
-                <span>Problema</span>
-                <strong>{roll ? `${roll.prompt} = ?` : 'Tira los dados'}</strong>
-                <div className="board-answer-row">
-                  <input
-                    disabled={!roll}
-                    inputMode="numeric"
-                    onChange={(event) => setAnswer(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        submitAnswer()
-                      }
-                    }}
-                    placeholder="Respuesta"
-                    type="number"
-                    value={answer}
-                  />
-                  <button className="secondary-button" disabled={!roll} onClick={submitAnswer} type="button">
-                    Responder
-                  </button>
+              <div className={`board-step-card board-problem-card ${feedback ? `is-${feedback}` : ''}`}>
+                <div className="board-step-heading">
+                  <span className="board-step-number">2</span>
+                  <strong>Resolver</strong>
                 </div>
+                <strong className={!roll ? 'board-turn-instruction' : undefined}>{resolverText}</strong>
+                {isTurnFinished && currentPlayer ? (
+                  <div
+                    className="board-next-turn-card"
+                    style={{ '--player-color': currentPlayer.color } as CSSProperties}
+                  >
+                    <span className={`board-marker board-marker--${currentPlayer.shape}`} aria-hidden="true">
+                      {shapeSymbol(currentPlayer.shape)}
+                    </span>
+                    <div>
+                      <small>Sigue</small>
+                      <strong>{currentPlayer.name}</strong>
+                      <span>Tira los dados.</span>
+                    </div>
+                  </div>
+                ) : null}
+                {roll ? (
+                  <div className="board-answer-row">
+                    <input
+                      disabled={isRolling}
+                      inputMode="numeric"
+                      onChange={(event) => setAnswer(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          submitAnswer()
+                        }
+                      }}
+                      placeholder="Respuesta"
+                      type="number"
+                      value={answer}
+                    />
+                    <button className="secondary-button" disabled={isRolling} onClick={submitAnswer} type="button">
+                      Responder
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
-              <button className="secondary-button board-end-button" onClick={finishGame} type="button">
-                Terminar juego
-              </button>
+              <div className="board-step-card board-finish-step">
+                <div className="board-step-heading">
+                  <span className="board-step-number">3</span>
+                  <strong>Finalizar</strong>
+                </div>
+                <button className="secondary-button board-end-button" onClick={requestFinishGame} type="button">
+                  Terminar juego
+                </button>
+              </div>
             </>
           )}
         </aside>
       </div>
+
+      {showFinishConfirm ? (
+        <div className="board-modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="board-finish-title"
+            aria-modal="true"
+            className="board-confirm-modal"
+            role="dialog"
+          >
+            <span className="task-badge">Terminar juego</span>
+            <h3 id="board-finish-title">¿Seguro que quieres terminar?</h3>
+            <p>Se cerrará la partida actual y se mostrarán los puntajes finales.</p>
+            <div className="board-confirm-actions">
+              <button className="secondary-button" onClick={cancelFinishGame} type="button">
+                Seguir jugando
+              </button>
+              <button className="primary-button" onClick={confirmFinishGame} type="button">
+                Sí, terminar
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   )
+}
+
+function getOperationSymbol(operation: Operation) {
+  const symbols: Record<Operation, string> = {
+    '+': '+',
+    '-': '-',
+    x: '×',
+    '/': '÷',
+  }
+
+  return symbols[operation]
+}
+
+function getOperationCountLabel(count: number) {
+  return `${count} ${count === 1 ? 'signo aritmético' : 'signos aritméticos'}`
 }
 
 function OperationBoard({
@@ -487,7 +533,9 @@ function OperationBoard({
       style={{ '--board-size': numbers.length + 1 } as CSSProperties}
       aria-label="Tablero de numeros"
     >
-      <div className="board-axis board-corner">x</div>
+      <div className="board-axis board-corner" aria-label="Dados del tablero">
+        <Dice5 aria-hidden="true" size={24} strokeWidth={2.6} />
+      </div>
       {numbers.map((number) => (
         <div className="board-axis" key={`col-${number}`}>
           {number}
