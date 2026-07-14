@@ -20,9 +20,10 @@ export function ActivityHost({
   const { activity, Component } = activityModule
   const canUseOffline = isOnline || download.state === 'downloaded'
   const areaClass = activity.area === 'Lenguaje' ? 'language' : 'math'
+  const activityClass = activity.id.replace(/[^a-z0-9-]/gi, '-')
 
   return (
-    <main className={`app-shell activity-view activity-view--${areaClass}`}>
+    <main className={`app-shell activity-view activity-view--${areaClass} activity-view--${activityClass}`}>
       <header className="activity-header">
         <div className="activity-title-block">
           <h1>{activity.title}</h1>
