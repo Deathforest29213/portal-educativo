@@ -1,7 +1,6 @@
-import OperacionesTableroActivity from './OperacionesTableroActivity'
-import type { ActivityModule } from '../../types'
+import { defineActivity } from '../defineActivity'
 
-export const operacionesTableroModule: ActivityModule = {
+export const operacionesTableroModule = defineActivity({
   activity: {
     id: 'operaciones-tablero',
     title: 'Tablero de Operaciones',
@@ -13,5 +12,5 @@ export const operacionesTableroModule: ActivityModule = {
     migrationStatus: 'mvp',
   },
   assets: ['/'],
-  Component: OperacionesTableroActivity,
-}
+  load: () => import('./OperacionesTableroActivity'),
+})

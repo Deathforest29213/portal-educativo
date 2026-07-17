@@ -1,18 +1,17 @@
-import SerpienteMatematicaActivity from './SerpienteMatematicaActivity'
 import { SERPIENTE_ASSETS } from './data/assets'
-import type { ActivityModule } from '../../types'
+import { defineActivity } from '../defineActivity'
 
-export const serpienteMatematicaModule: ActivityModule = {
+export const serpienteMatematicaModule = defineActivity({
   activity: {
     id: 'serpiente-matematica',
     title: 'Serpiente Matemática',
     area: 'Matemática',
-    description: 'Juego de cálculo con feedback inmediato, migrado desde Serpiente.html.',
+    description: 'Juego de cálculo mental para construir una serpiente respuesta a respuesta.',
     level: 'Cálculo mental',
     version: '1.0.0',
     source: 'serpiente/Serpiente.html',
     migrationStatus: 'mvp',
   },
   assets: ['/', ...SERPIENTE_ASSETS],
-  Component: SerpienteMatematicaActivity,
-}
+  load: () => import('./SerpienteMatematicaActivity'),
+})

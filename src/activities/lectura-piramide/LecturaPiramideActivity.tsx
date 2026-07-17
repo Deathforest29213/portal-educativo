@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { browserRandom } from '../../platform/random/RandomSource'
 import { ActivityShell } from './components/ActivityShell'
 import {
   INACTIVE_SOURCE_STORIES,
@@ -70,7 +71,7 @@ function LecturaPiramideActivity({
 
   function startRandom() {
     if (STORIES.length === 0) return
-    const randomStory = STORIES[Math.floor(Math.random() * STORIES.length)]
+    const randomStory = browserRandom.pick(STORIES)
     startStory(randomStory.id, 'menu')
   }
 

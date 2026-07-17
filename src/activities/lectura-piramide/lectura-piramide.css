@@ -1230,3 +1230,131 @@
     color: #4285f4;
   }
 }
+
+/* Portal visual-system alignment ------------------------------------------ */
+
+.activity-view--language .lp-shell {
+  --ink: var(--color-text);
+  --muted: var(--color-text-muted);
+  --border: var(--color-border);
+  --surface: var(--color-surface);
+  color: var(--color-text);
+}
+
+.activity-view--language .lp-page {
+  width: 100%;
+  max-width: none;
+  padding-inline: 0;
+}
+
+.activity-view--language .menu-window,
+.activity-view--language .hero-card,
+.activity-view--language .visual-panel,
+.activity-view--language .pyramid-panel,
+.activity-view--language .summary-panel,
+.activity-view--language .question-panel,
+.activity-view--language .result-card,
+.activity-view--language .print-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.activity-view--language .menu-window {
+  background: linear-gradient(145deg, var(--color-language-soft), var(--color-surface) 55%);
+}
+
+.activity-view--language .menu-copy,
+.activity-view--language .copy,
+.activity-view--language .pyramid,
+.activity-view--language .summary-stack {
+  max-width: var(--reading-measure);
+  line-height: var(--line-height-reading);
+}
+
+.activity-view--language .menu-option-card,
+.activity-view--language .story-card,
+.activity-view--language .option-button,
+.activity-view--language .print-select-card {
+  min-height: var(--touch-target);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.activity-view--language .option-button.correct {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.activity-view--language .option-button.correct::after {
+  content: " ✓ Correcta";
+  font-size: var(--font-size-xs);
+}
+
+.activity-view--language .option-button.wrong {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.activity-view--language .option-button.wrong::after {
+  content: " ✕ Revisar";
+  font-size: var(--font-size-xs);
+}
+
+.activity-view--language .menu-deco,
+.activity-view--language .confetti,
+.activity-view--language .burst {
+  opacity: 0.55;
+}
+
+@media (min-width: 75rem) {
+  .activity-view--language .menu-stage {
+    min-height: min(48rem, calc(100vh - 9rem));
+  }
+
+  .activity-view--language .menu-window {
+    width: min(78rem, calc(100% - 2rem));
+    min-height: min(46rem, calc(100vh - 10rem));
+    padding: clamp(2.5rem, 4vw, 4rem);
+  }
+
+  .activity-view--language .menu-content {
+    min-height: min(38rem, calc(100vh - 17rem));
+  }
+
+  .activity-view--language .menu-grid {
+    width: min(68rem, 100%);
+    gap: clamp(1.5rem, 2.5vw, 2.25rem);
+  }
+
+  .activity-view--language .menu-option-card {
+    min-height: 20rem;
+    padding: clamp(2rem, 3vw, 3rem);
+  }
+}
+
+@media (max-width: 47.5rem) {
+  .activity-view--language .reading-grid,
+  .activity-view--language .quiz-grid,
+  .activity-view--language .collection-grid,
+  .activity-view--language .menu-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-view--language .menu-window,
+  .activity-view--language .hero-card,
+  .activity-view--language .visual-panel,
+  .activity-view--language .pyramid-panel,
+  .activity-view--language .summary-panel,
+  .activity-view--language .question-panel,
+  .activity-view--language .result-card,
+  .activity-view--language .print-panel {
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+  }
+}

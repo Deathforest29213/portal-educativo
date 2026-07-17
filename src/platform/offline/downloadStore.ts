@@ -18,15 +18,17 @@ export function loadDownloads(activities: Activity[]) {
   const stored = safeParse<Record<string, DownloadRecord>>(localStorage.getItem(DOWNLOADS_KEY), {})
 
   return activities.reduce<Record<string, DownloadRecord>>((records, activity) => {
-    records[activity.id] = stored[activity.id] ?? {
+    const previous = stored[activity.id]
+    records[activity.id] = {
       activityId: activity.id,
       availableVersion: activity.version,
-      downloadedAt: null,
-      downloadedVersion: null,
-      state: 'available',
+      downloadedAt: previous?.downloadedAt ?? null,
+      downloadedVersion: previous?.downloadedVersion ?? null,
+      errorMessage: previous?.errorMessage ?? null,
+      state: previous?.state === 'downloading' || previous?.state === 'updating'
+        ? 'available'
+        : previous?.state ?? 'available',
     }
-
-    records[activity.id].availableVersion = activity.version
     return records
   }, {})
 }

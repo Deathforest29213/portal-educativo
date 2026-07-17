@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ActionButton } from '../../../app/components/ActionButton'
 import { PyramidStack } from '../components/PyramidStack'
 import { TopBar } from '../components/TopBar'
 import type { Minihistory } from '../types'
@@ -42,20 +43,18 @@ export function PrintScreen({ stories, onBack }: PrintScreenProps) {
           </div>
 
           <div className="print-action-row">
-            <button className="secondary-button" type="button" onClick={() => setSelectedIds(stories.map((story) => story.id))}>
+            <ActionButton onClick={() => setSelectedIds(stories.map((story) => story.id))} variant="secondary">
               Seleccionar todas
-            </button>
-            <button className="secondary-button" type="button" onClick={() => setSelectedIds([])}>
+            </ActionButton>
+            <ActionButton onClick={() => setSelectedIds([])} variant="secondary">
               Limpiar selección
-            </button>
-            <button
-              className="result-button"
+            </ActionButton>
+            <ActionButton
               disabled={selectedStories.length === 0}
-              type="button"
               onClick={() => window.print()}
             >
               Imprimir / Guardar PDF
-            </button>
+            </ActionButton>
           </div>
 
           <div className="print-selection-grid" aria-label="Selección de minihistorias">

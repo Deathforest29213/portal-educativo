@@ -1,8 +1,7 @@
-import LecturaPiramideActivity from './LecturaPiramideActivity'
 import { LECTURA_PIRAMIDE_IMAGE_ASSETS } from './data/imageUrls'
-import type { ActivityModule } from '../../types'
+import { defineActivity } from '../defineActivity'
 
-export const lecturaPiramideModule: ActivityModule = {
+export const lecturaPiramideModule = defineActivity({
   activity: {
     id: 'lectura-piramide',
     title: 'Lectura en Pirámide',
@@ -14,5 +13,5 @@ export const lecturaPiramideModule: ActivityModule = {
     migrationStatus: 'mvp',
   },
   assets: ['/', ...LECTURA_PIRAMIDE_IMAGE_ASSETS],
-  Component: LecturaPiramideActivity,
-}
+  load: () => import('./LecturaPiramideActivity'),
+})

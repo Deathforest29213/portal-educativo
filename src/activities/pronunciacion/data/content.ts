@@ -17,15 +17,15 @@ export type WhisperModelOption = {
 export const whisperModels: WhisperModelOption[] = [
   {
     id: 'onnx-community/whisper-tiny',
-    label: 'Whisper tiny',
+    label: 'Ligero',
     description: 'Carga más liviana para notebooks escolares.',
     size: '~80 MB',
     tag: 'Recomendado',
   },
   {
     id: 'onnx-community/whisper-base',
-    label: 'Whisper base',
-    description: 'Mejor precisión, con descarga cercana al demo de Xenova.',
+    label: 'Preciso',
+    description: 'Reconoce mejor el habla y necesita una descarga mayor.',
     size: '~200 MB',
     tag: 'Más preciso',
   },

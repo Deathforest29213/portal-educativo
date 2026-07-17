@@ -1,4 +1,5 @@
 import { TopBar } from '../components/TopBar'
+import { ActionButton } from '../../../app/components/ActionButton'
 
 interface CompleteScreenProps {
   onBackToMenu: () => void
@@ -55,15 +56,15 @@ export function CompleteScreen({
         </div>
 
         <div className="result-actions">
-          <button className="result-button" type="button" onClick={onRestart}>
+          <ActionButton onClick={onRestart}>
             Repetir historia
-          </button>
-          <button className="secondary-button" type="button" onClick={onStartRandom}>
+          </ActionButton>
+          <ActionButton onClick={onStartRandom} variant="secondary">
             Otra al azar
-          </button>
-          <button className="secondary-button" type="button" onClick={onOpenCollection}>
+          </ActionButton>
+          <ActionButton onClick={onOpenCollection} variant="secondary">
             Ver colección
-          </button>
+          </ActionButton>
         </div>
       </section>
     </>

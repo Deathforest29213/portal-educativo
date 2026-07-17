@@ -33,6 +33,8 @@ export const task1Parts = [
 export const task1Questions = [
   {
     id: 't1-q1',
+    image: task1Parts[1].image,
+    imageAlt: 'Teodoro repartiendo cartas entre los animales del barrio.',
     points: 2,
     skill: 'Interpretar y relacionar',
     question: '¿Cómo se sienten los animales del barrio cuando esperan las cartas que entrega Teodoro?',
@@ -41,6 +43,8 @@ export const task1Questions = [
   },
   {
     id: 't1-q2',
+    image: task1Parts[1].image,
+    imageAlt: 'Los animales del barrio esperando las cartas de Teodoro.',
     points: 2,
     skill: 'Interpretar y relacionar',
     question: 'Según el texto, ¿qué le sucedía a veces al señor caballo?',
@@ -49,6 +53,8 @@ export const task1Questions = [
   },
   {
     id: 't1-q3',
+    image: task1Parts[1].image,
+    imageAlt: 'Los vecinos del barrio recibiendo las cartas de Teodoro.',
     points: 1,
     skill: 'Interpretar y relacionar',
     question: '¿Quién agradece en silencio al recibir las cartas de Teodoro?',
@@ -57,6 +63,8 @@ export const task1Questions = [
   },
   {
     id: 't1-q4',
+    image: task1Parts[2].image,
+    imageAlt: 'Teodoro escribiendo cartas para los animales que no recibieron una.',
     points: 2,
     skill: 'Interpretar y relacionar',
     question: '¿A quiénes escribía cartas Teodoro?',

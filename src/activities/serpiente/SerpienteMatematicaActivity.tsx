@@ -1,11 +1,34 @@
 import { Delete } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { ActionButton } from '../../app/components/ActionButton'
+import { ProgressBadge } from '../../app/components/ProgressBadge'
 import { difficulties, difficultyKeys } from './data/difficulties'
 import { generateProblem, makeStartNumber } from './domain/problems'
 import type { DifficultyKey, DifficultySettings, Problem } from './types'
 
 type Screen = 'menu' | 'playing' | 'summary'
 type Feedback = 'correct' | 'wrong' | null
+export type AnswerPresentation = 'correct' | 'wrong' | 'hint' | 'dimmed' | 'idle'
+
+export function getAnswerPresentation({
+  feedback,
+  option,
+  result,
+  selectedAnswer,
+  skipOnError,
+}: {
+  feedback: Feedback
+  option: number
+  result: number
+  selectedAnswer: number | null
+  skipOnError: boolean
+}): AnswerPresentation {
+  if (feedback === 'correct' && option === result) return 'correct'
+  if (feedback === 'wrong' && option === selectedAnswer) return 'wrong'
+  if (feedback === 'wrong' && option === result && !skipOnError) return 'hint'
+  if (feedback === 'wrong' && option !== result) return 'dimmed'
+  return 'idle'
+}
 
 export default function SerpienteMatematicaActivity() {
   const [screen, setScreen] = useState<Screen>('menu')
@@ -14,6 +37,7 @@ export default function SerpienteMatematicaActivity() {
   const [snakeSegments, setSnakeSegments] = useState<number[]>([])
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null)
   const [feedback, setFeedback] = useState<Feedback>(null)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [exerciseIndex, setExerciseIndex] = useState(0)
 
   function startGame() {
@@ -23,6 +47,7 @@ export default function SerpienteMatematicaActivity() {
     setSnakeSegments([startNumber])
     setExerciseIndex(0)
     setFeedback(null)
+    setSelectedAnswer(null)
     setCurrentProblem(generateProblem(startNumber, difficultyKey))
     setScreen('playing')
   }
@@ -32,12 +57,14 @@ export default function SerpienteMatematicaActivity() {
     setSnakeSegments([])
     setCurrentProblem(null)
     setFeedback(null)
+    setSelectedAnswer(null)
     setExerciseIndex(0)
   }
 
   function handleAnswer(value: number) {
     if (!currentProblem || feedback) return
     const settings = difficulties[activeDifficulty]
+    setSelectedAnswer(value)
 
     if (value === currentProblem.result) {
       setFeedback('correct')
@@ -50,6 +77,7 @@ export default function SerpienteMatematicaActivity() {
           setExerciseIndex(nextIndex)
           setCurrentProblem(generateProblem(value, activeDifficulty))
           setFeedback(null)
+          setSelectedAnswer(null)
         }
       }, 800)
       return
@@ -66,10 +94,14 @@ export default function SerpienteMatematicaActivity() {
           setExerciseIndex(nextIndex)
           setCurrentProblem(generateProblem(null, activeDifficulty))
           setFeedback(null)
+          setSelectedAnswer(null)
         }
       }, 1200)
     } else {
-      window.setTimeout(() => setFeedback(null), 500)
+      window.setTimeout(() => {
+        setFeedback(null)
+        setSelectedAnswer(null)
+      }, 1100)
     }
   }
 
@@ -96,6 +128,7 @@ export default function SerpienteMatematicaActivity() {
           onAnswer={handleAnswer}
           onExit={returnToLevels}
           problem={currentProblem}
+          selectedAnswer={selectedAnswer}
           snake={snakeSegments}
         />
       ) : null}
@@ -139,7 +172,7 @@ function SnakeMenu({
           return (
             <button
               aria-checked={selected}
-              className={`snake-difficulty-card ${selected ? 'is-selected' : ''}`}
+              className={`snake-difficulty-card ui-card ui-card--interactive ${selected ? 'is-selected ui-card--selected' : ''}`}
               key={key}
               onClick={() => setDifficulty(key)}
               role="radio"
@@ -154,9 +187,9 @@ function SnakeMenu({
           )
         })}
       </div>
-      <button className="primary-button snake-feed-button" onClick={onStart} type="button">
-        ¡ALIMENTAR!
-      </button>
+      <ActionButton className="snake-feed-button" onClick={onStart}>
+        Comenzar actividad
+      </ActionButton>
     </div>
   )
 }
@@ -168,6 +201,7 @@ function SnakeGame({
   onAnswer,
   onExit,
   problem,
+  selectedAnswer,
   snake,
 }: {
   difficulty: DifficultyKey
@@ -176,6 +210,7 @@ function SnakeGame({
   onAnswer: (value: number) => void
   onExit: () => void
   problem: Problem
+  selectedAnswer: number | null
   snake: number[]
 }) {
   const settings = difficulties[difficulty]
@@ -217,15 +252,13 @@ function SnakeGame({
   return (
     <div className={`snake-game-screen snake-game-screen--${difficulty}`}>
       <header className="snake-game-topbar">
-        <button className="snake-exit-button" onClick={onExit} type="button">
+        <ActionButton className="snake-exit-button" onClick={onExit} variant="quiet">
           ← Volver a niveles
-        </button>
-        <div>
-          <span>Bocado {exerciseIndex + 1} de {settings.exercises}</span>
-        </div>
+        </ActionButton>
+        <ProgressBadge current={exerciseIndex + 1} label="Ejercicio" total={settings.exercises} />
       </header>
 
-      <div className="snake-progress-line">
+      <div aria-hidden="true" className="snake-progress-line">
         <span style={{ width: `${progress}%` }} />
       </div>
 
@@ -243,10 +276,24 @@ function SnakeGame({
         {difficulty !== 'hard' ? (
           <div className="snake-answer-grid" data-options={problem.options.length}>
             {problem.options.map((option) => {
-              const isCorrect = option === problem.result
+              const presentation = getAnswerPresentation({
+                feedback,
+                option,
+                result: problem.result,
+                selectedAnswer,
+                skipOnError: settings.skipOnError,
+              })
+              const stateLabel = presentation === 'correct'
+                ? 'Respuesta correcta'
+                : presentation === 'wrong'
+                  ? 'Respuesta incorrecta'
+                  : presentation === 'hint'
+                    ? 'Respuesta sugerida'
+                    : ''
               return (
                 <button
-                  className={`${feedback === 'correct' && isCorrect ? 'is-correct' : ''} ${feedback === 'wrong' && isCorrect && !settings.skipOnError ? 'is-hint' : ''} ${feedback === 'wrong' && !isCorrect ? 'is-dimmed' : ''}`}
+                  aria-label={`Responder ${option}${stateLabel ? `. ${stateLabel}` : ''}`}
+                  className={presentation === 'idle' ? '' : `is-${presentation}`}
                   disabled={feedback !== null}
                   key={option}
                   onClick={() => onAnswer(option)}
@@ -261,6 +308,12 @@ function SnakeGame({
           <NumericKeypad feedback={feedback} inputValue={inputValue} onKeyInput={handleKeyInput} />
         )}
       </article>
+
+      <p aria-atomic="true" aria-live="polite" className="sr-only" role="status">
+        {feedback === 'correct' ? 'Respuesta correcta. La serpiente crece.' : ''}
+        {feedback === 'wrong' && settings.skipOnError ? 'Respuesta incorrecta. Prepararemos otro ejercicio.' : ''}
+        {feedback === 'wrong' && !settings.skipOnError ? 'Respuesta incorrecta. Elige otra alternativa.' : ''}
+      </p>
 
       <div className="snake-segments-track" ref={scrollRef} aria-label="Tu serpiente">
         <div className="snake-track-label">Tu Serpiente</div>
@@ -305,7 +358,7 @@ function NumericKeypad({
         <Delete aria-hidden="true" strokeWidth={3} />
       </button>
       <button disabled={feedback !== null} onClick={() => onKeyInput('0')} type="button">0</button>
-      <button disabled={feedback !== null || inputValue === ''} onClick={() => onKeyInput('enter')} title="Aceptar" type="button">↵</button>
+      <button aria-label="Comprobar respuesta" disabled={feedback !== null || inputValue === ''} onClick={() => onKeyInput('enter')} title="Comprobar respuesta" type="button">↵</button>
     </div>
   )
 }
@@ -341,9 +394,9 @@ function SnakeSummary({
         </div>
         <small>← Desliza para verla completa →</small>
       </div>
-      <button className="primary-button" onClick={onRestart} type="button">
+      <ActionButton onClick={onRestart}>
         Jugar otra vez
-      </button>
+      </ActionButton>
     </div>
   )
 }

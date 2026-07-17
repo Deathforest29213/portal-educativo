@@ -1,5 +1,6 @@
-import { AlertTriangle, Wifi, WifiOff } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BookOpenText, Calculator, Wifi, WifiOff } from 'lucide-react'
 import type { Activity, ActivityModule, DownloadRecord } from '../types'
+import { ActionButton } from './components/ActionButton'
 import { DownloadButton } from './components/DownloadButton'
 
 type PortalHomeProps = {
@@ -18,14 +19,14 @@ export function PortalHome({
   onOpen,
 }: PortalHomeProps) {
   return (
-    <main className="app-shell">
+    <main className="app-shell portal-home">
       <Header isOnline={isOnline} />
       <section className="intro-section" aria-labelledby="page-title">
         <div>
-          <p className="section-label">Portal educativo</p>
+          <p className="section-label">Aula digital</p>
           <h1 id="page-title">Aula de Actividades</h1>
           <p className="intro-copy">
-            Actividades listas para trabajar en vivo, con descarga para usarlas sin conexión.
+            Elige un área y abre una actividad. Puedes descargarla para usarla sin internet.
           </p>
         </div>
         <div className="summary-strip" aria-label="Resumen del portal">
@@ -60,9 +61,9 @@ function Header({ isOnline }: { isOnline: boolean }) {
       </div>
       <div>
         <strong>Aula de Actividades</strong>
-        <span>Prototipo local</span>
+        <span>Lenguaje y Matemática en un solo lugar</span>
       </div>
-      <div className={`connection-badge ${isOnline ? 'is-online' : 'is-offline'}`}>
+      <div aria-live="polite" className={`connection-badge ${isOnline ? 'is-online' : 'is-offline'}`}>
         {isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
         {isOnline ? 'Con conexión' : 'Sin conexión'}
       </div>
@@ -95,12 +96,17 @@ function ActivitySection({
   onOpen,
 }: ActivitySectionProps) {
   const sectionModules = activityModules.filter((module) => module.activity.area === area)
+  const family = area === 'Lenguaje' ? 'language' : 'math'
+  const AreaIcon = area === 'Lenguaje' ? BookOpenText : Calculator
 
   return (
-    <section className="activity-section" aria-labelledby={`section-${area}`}>
+    <section className={`activity-section family-${family}`} aria-labelledby={`section-${family}`}>
       <div className="section-heading">
-        <p className="section-label">Sección</p>
-        <h2 id={`section-${area}`}>{area}</h2>
+        <span aria-hidden="true" className="section-heading__icon"><AreaIcon size={22} /></span>
+        <div>
+          <p className="section-label">Actividades de</p>
+          <h2 id={`section-${family}`}>{area}</h2>
+        </div>
       </div>
       <div className="activity-grid">
         {sectionModules.map((activityModule) => (
@@ -128,9 +134,10 @@ function ActivityCard({ activityModule, download, onDownload, onOpen }: Activity
   const { activity } = activityModule
   const needsUpdate =
     download.downloadedVersion !== null && download.downloadedVersion !== activity.version
+  const family = activity.area === 'Lenguaje' ? 'language' : 'math'
 
   return (
-    <article className={`activity-card activity-card--${activity.area.toLowerCase()}`}>
+    <article className={`activity-card activity-card--${family} ui-card`}>
       <div className="card-topline">
         <span>{activity.level}</span>
         {needsUpdate ? (
@@ -140,17 +147,19 @@ function ActivityCard({ activityModule, download, onDownload, onOpen }: Activity
           </span>
         ) : null}
       </div>
-      <h3>{activity.title}</h3>
-      <p>{activity.description}</p>
+      <div className="activity-card__content">
+        <h3>{activity.title}</h3>
+        <p>{activity.description}</p>
+      </div>
       <div className="card-actions">
-        <button className="primary-button" onClick={onOpen} type="button">
-          Abrir
-        </button>
-        <span className="version-chip" aria-label={`Versión ${activity.version}`}>
-          v{activity.version}
-        </span>
+        <ActionButton icon={<ArrowRight aria-hidden="true" size={18} />} onClick={onOpen}>
+          Abrir actividad
+        </ActionButton>
         <DownloadButton download={download} onDownload={onDownload} />
       </div>
+      <small className="version-chip" aria-label={`Versión ${activity.version}`}>
+        Versión {activity.version}
+      </small>
     </article>
   )
 }

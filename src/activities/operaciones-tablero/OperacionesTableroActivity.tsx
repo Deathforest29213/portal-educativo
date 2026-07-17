@@ -1,36 +1,34 @@
 import { Dice5, UsersRound } from 'lucide-react'
-import { useMemo, useState, type CSSProperties } from 'react'
-import { DIFFICULTIES, PLAYER_NICKNAMES, PLAYER_PRESETS, getDifficulty } from './data/config'
-import {
-  cellKey,
-  getLineBonuses,
-  makePlayers,
-  makeRoll,
-  shapeSymbol,
-} from './domain/board'
-import type { ClaimedCell, DifficultyKey, Operation, Player, PlayerPreset, Roll } from './types'
-
-type Screen = 'setup' | 'playing' | 'finished'
-type Feedback = 'correct' | 'wrong' | null
+import { useMemo, useReducer, type CSSProperties } from 'react'
+import { ActionButton } from '../../app/components/ActionButton'
+import { ConfirmDialog } from '../../app/components/ConfirmDialog'
+import { FeedbackBanner } from '../../app/components/FeedbackBanner'
+import { browserRandom } from '../../platform/random/RandomSource'
+import { DIFFICULTIES, PLAYER_NICKNAMES, getDifficulty } from './data/config'
+import { cellKey, makeRoll, shapeSymbol } from './domain/board'
+import { boardGameReducer, createBoardGameState } from './domain/gameState'
+import type { ClaimedCell, Operation, Player } from './types'
 
 const MAX_ROLLS_PER_TURN = 2
 
 export default function OperacionesTableroActivity() {
-  const [screen, setScreen] = useState<Screen>('setup')
-  const [difficultyKey, setDifficultyKey] = useState<DifficultyKey>('easy')
-  const [playerCount, setPlayerCount] = useState(3)
-  const [playerPresets, setPlayerPresets] = useState<PlayerPreset[]>(PLAYER_PRESETS)
-  const [players, setPlayers] = useState<Player[]>([])
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0)
-  const [claimed, setClaimed] = useState<Record<string, ClaimedCell>>({})
-  const [roll, setRoll] = useState<Roll | null>(null)
-  const [answer, setAnswer] = useState('')
-  const [feedback, setFeedback] = useState<Feedback>(null)
-  const [message, setMessage] = useState('Tira los dados para comenzar el turno.')
-  const [awardedLineKeys, setAwardedLineKeys] = useState<Set<string>>(() => new Set())
-  const [rollsThisTurn, setRollsThisTurn] = useState(0)
-  const [isRolling, setIsRolling] = useState(false)
-  const [showFinishConfirm, setShowFinishConfirm] = useState(false)
+  const [state, dispatch] = useReducer(boardGameReducer, undefined, createBoardGameState)
+  const {
+    screen,
+    difficultyKey,
+    playerCount,
+    playerPresets,
+    players,
+    currentPlayerIndex,
+    claimed,
+    roll,
+    answer,
+    feedback,
+    message,
+    rollsThisTurn,
+    isRolling,
+    showFinishConfirm,
+  } = state
 
   const difficulty = getDifficulty(difficultyKey)
   const numbers = useMemo(
@@ -57,69 +55,41 @@ export default function OperacionesTableroActivity() {
     : `Turno de ${currentPlayer?.name ?? 'jugador'}, tira los dados.`
 
   function startGame() {
-    const nextPlayers = makePlayers(playerCount, selectedPlayerPresets)
-    setPlayers(nextPlayers)
-    setCurrentPlayerIndex(0)
-    setClaimed({})
-    setRoll(null)
-    setAnswer('')
-    setFeedback(null)
-    setAwardedLineKeys(new Set())
-    setRollsThisTurn(0)
-    setIsRolling(false)
-    setShowFinishConfirm(false)
-    setMessage(`${nextPlayers[0].name} parte tirando los dados.`)
-    setScreen('playing')
+    dispatch({ type: 'START_GAME' })
   }
 
   function randomizePlayerName(playerIndex: number) {
-    setPlayerPresets((currentPresets) => {
-      const usedNames = new Set(currentPresets.map((player) => player.name))
-      const availableNames = PLAYER_NICKNAMES.filter((name) => !usedNames.has(name))
+    const usedNames = new Set(playerPresets.map((player) => player.name))
+    const availableNames = PLAYER_NICKNAMES.filter((name) => !usedNames.has(name))
+    if (availableNames.length === 0) return
 
-      if (availableNames.length === 0) {
-        return currentPresets
-      }
-
-      const nextName = availableNames[Math.floor(Math.random() * availableNames.length)]
-      return currentPresets.map((player, index) =>
-        index === playerIndex ? { ...player, name: nextName } : player,
-      )
-    })
+    const name = browserRandom.pick(availableNames)
+    dispatch({ type: 'SET_PLAYER_NAME', playerIndex, name })
   }
 
   function resetGame() {
-    setScreen('setup')
-    setPlayers([])
-    setCurrentPlayerIndex(0)
-    setClaimed({})
-    setRoll(null)
-    setAnswer('')
-    setFeedback(null)
-    setAwardedLineKeys(new Set())
-    setRollsThisTurn(0)
-    setIsRolling(false)
-    setShowFinishConfirm(false)
-    setMessage('Tira los dados para comenzar el turno.')
+    dispatch({ type: 'RESET_GAME' })
+  }
+
+  function returnToMenu() {
+    if (screen === 'playing') {
+      requestFinishGame()
+      return
+    }
+
+    resetGame()
   }
 
   function requestFinishGame() {
-    setShowFinishConfirm(true)
+    dispatch({ type: 'REQUEST_FINISH' })
   }
 
   function cancelFinishGame() {
-    setShowFinishConfirm(false)
+    dispatch({ type: 'CANCEL_FINISH' })
   }
 
   function confirmFinishGame() {
-    setRoll(null)
-    setAnswer('')
-    setFeedback(null)
-    setRollsThisTurn(0)
-    setIsRolling(false)
-    setShowFinishConfirm(false)
-    setScreen('finished')
-    setMessage('Partida terminada. Revisen el puntaje final.')
+    dispatch({ type: 'CONFIRM_FINISH' })
   }
 
   function rollDice() {
@@ -128,90 +98,14 @@ export default function OperacionesTableroActivity() {
     }
 
     const nextRoll = makeRoll(difficulty, claimed)
-    setFeedback(null)
-    setAnswer('')
-    setIsRolling(true)
-
-    if (!nextRoll) {
-      setRoll(null)
-      setIsRolling(false)
-      setMessage('No quedan casillas disponibles para esta dificultad.')
-      setScreen('finished')
-      return
+    dispatch({ type: 'ROLL_REQUESTED', roll: nextRoll })
+    if (nextRoll) {
+      window.setTimeout(() => dispatch({ type: 'ROLL_ANIMATION_FINISHED' }), 720)
     }
-
-    setRoll(nextRoll)
-    setRollsThisTurn((count) => Math.min(count + 1, MAX_ROLLS_PER_TURN))
-    setMessage(`${currentPlayer.name}, resuelve la operación para marcar la casilla.`)
-    window.setTimeout(() => setIsRolling(false), 720)
   }
 
   function submitAnswer() {
-    if (!roll || !currentPlayer || isRolling || answer.trim() === '') {
-      return
-    }
-
-    const numericAnswer = Number(answer)
-    if (!Number.isFinite(numericAnswer) || numericAnswer !== roll.answer) {
-      const nextPlayerIndex = (currentPlayerIndex + 1) % players.length
-      setFeedback('wrong')
-      setRoll(null)
-      setAnswer('')
-      setRollsThisTurn(0)
-      setIsRolling(false)
-      setCurrentPlayerIndex(nextPlayerIndex)
-      setMessage(`${currentPlayer.name} pierde el turno. Sigue ${players[nextPlayerIndex].name}.`)
-      return
-    }
-
-    const nextClaimed = {
-      ...claimed,
-      [cellKey(roll.row, roll.col)]: {
-        playerId: currentPlayer.id,
-        color: currentPlayer.color,
-        shape: currentPlayer.shape,
-      },
-    }
-
-    const bonusLines = getLineBonuses(
-      roll.row,
-      roll.col,
-      currentPlayer.id,
-      nextClaimed,
-      difficulty.maxNumber,
-      awardedLineKeys,
-    )
-    const bonusPoints = bonusLines.length * 2
-    const nextPlayers = players.map((player) =>
-      player.id === currentPlayer.id
-        ? { ...player, score: player.score + 1 + bonusPoints }
-        : player,
-    )
-    const nextAwarded = new Set(awardedLineKeys)
-    bonusLines.forEach((bonusKey) => nextAwarded.add(bonusKey))
-    const nextPlayerIndex = (currentPlayerIndex + 1) % players.length
-
-    setClaimed(nextClaimed)
-    setPlayers(nextPlayers)
-    setAwardedLineKeys(nextAwarded)
-    setFeedback('correct')
-    setRoll(null)
-    setAnswer('')
-    setRollsThisTurn(0)
-    setIsRolling(false)
-
-    if (Object.keys(nextClaimed).length >= totalCells) {
-      setScreen('finished')
-      setMessage('Tablero completo. Revisen el puntaje final.')
-      return
-    }
-
-    setCurrentPlayerIndex(nextPlayerIndex)
-    setMessage(
-      bonusPoints > 0
-        ? `${currentPlayer.name} gana ${1 + bonusPoints} puntos. Sigue ${nextPlayers[nextPlayerIndex].name}.`
-        : `${currentPlayer.name} marca la casilla. Sigue ${nextPlayers[nextPlayerIndex].name}.`,
-    )
+    dispatch({ type: 'SUBMIT_ANSWER' })
   }
 
   if (screen === 'setup') {
@@ -244,7 +138,7 @@ export default function OperacionesTableroActivity() {
                       aria-checked={isSelected}
                       className={isSelected ? 'is-selected' : ''}
                       key={item.key}
-                      onClick={() => setDifficultyKey(item.key)}
+                      onClick={() => dispatch({ type: 'SELECT_DIFFICULTY', difficultyKey: item.key })}
                       role="radio"
                       style={{ '--board-card-tone': item.tone } as CSSProperties}
                       type="button"
@@ -278,7 +172,7 @@ export default function OperacionesTableroActivity() {
                       aria-checked={count === playerCount}
                       className={count === playerCount ? 'is-selected' : ''}
                       key={count}
-                      onClick={() => setPlayerCount(count)}
+                      onClick={() => dispatch({ type: 'SET_PLAYER_COUNT', count })}
                       role="radio"
                       type="button"
                     >
@@ -316,9 +210,9 @@ export default function OperacionesTableroActivity() {
             </article>
           </div>
 
-          <button className="primary-button board-start-button" onClick={startGame} type="button">
+          <ActionButton className="board-start-button" onClick={startGame}>
             Comenzar juego
-          </button>
+          </ActionButton>
         </div>
       </section>
     )
@@ -330,9 +224,9 @@ export default function OperacionesTableroActivity() {
       style={{ '--board-tone': difficulty.tone } as CSSProperties}
     >
       <div className="activity-back-row board-back-row">
-        <button className="activity-back-pill" onClick={resetGame} type="button">
+        <ActionButton onClick={returnToMenu} variant="quiet">
           ← Volver al menú
-        </button>
+        </ActionButton>
       </div>
 
       <div className="board-status-panel">
@@ -343,11 +237,6 @@ export default function OperacionesTableroActivity() {
               : `Turno: ${currentPlayer?.name ?? 'jugador'}`}
           </h2>
           <p>{message}</p>
-        </div>
-
-        <div className="board-status-metrics" aria-label="Estado de la partida">
-          <span>{claimedCount}/{totalCells} casillas</span>
-          <span>Líneas de 3: +2 pts</span>
         </div>
 
         <div className="board-score-grid">
@@ -381,45 +270,45 @@ export default function OperacionesTableroActivity() {
             <FinishedPanel players={players} onRestart={resetGame} />
           ) : (
             <>
-              <div className="board-turn-player" style={{ '--player-color': currentPlayer?.color } as CSSProperties}>
-                {currentPlayer ? (
-                  <>
-                    <span className={`board-marker board-marker--${currentPlayer.shape}`}>
-                      {shapeSymbol(currentPlayer.shape)}
-                    </span>
-                    <div>
-                      <small>Jugador actual</small>
-                      <strong>{currentPlayer.name}</strong>
-                    </div>
-                  </>
-                ) : null}
-              </div>
+              <section className="board-points-card" aria-labelledby="board-points-title">
+                <div className="board-points-heading">
+                  <strong id="board-points-title">Puntos y progreso</strong>
+                </div>
+                <div className="board-points-summary">
+                  <div>
+                    <strong>+1</strong>
+                    <span>Casilla</span>
+                  </div>
+                  <div>
+                    <strong>+2</strong>
+                    <span>Línea de 3</span>
+                  </div>
+                  <div>
+                    <strong>{claimedCount}/{totalCells}</strong>
+                    <span>Marcadas</span>
+                  </div>
+                </div>
+              </section>
 
               <div className="board-step-card board-dice-panel">
                 <div className="board-step-heading">
                   <span className="board-step-number">1</span>
                   <strong>Tirar dados</strong>
                 </div>
-                <div className="board-dice-row">
+                <div className="board-dice-row" aria-live="polite">
                   <DiceValue label="Fila" value={roll?.row ?? '-'} />
                   <DiceValue label="Columna" value={roll?.col ?? '-'} />
                   <DiceValue label="Operación" value={roll ? formatOperation(roll.operation) : '-'} />
                 </div>
-                <div className="board-operation-roll" aria-live="polite">
-                  <span>Dado de signo</span>
-                  <strong className={isRolling ? 'is-rolling' : ''}>
-                    {roll ? getOperationSymbol(roll.operation) : '?'}
-                  </strong>
-                  <small>{rollsThisTurn}/{MAX_ROLLS_PER_TURN} tiradas</small>
-                </div>
-                <button
-                  className="primary-button board-roll-button"
+                <ActionButton
+                  busy={isRolling}
+                  busyLabel="Tirando dados"
+                  className="board-roll-button"
                   disabled={!canRoll}
                   onClick={rollDice}
-                  type="button"
                 >
                   {rollButtonLabel}
-                </button>
+                </ActionButton>
               </div>
 
               <div className={`board-step-card board-problem-card ${feedback ? `is-${feedback}` : ''}`}>
@@ -448,7 +337,7 @@ export default function OperacionesTableroActivity() {
                     <input
                       disabled={isRolling}
                       inputMode="numeric"
-                      onChange={(event) => setAnswer(event.target.value)}
+                      onChange={(event) => dispatch({ type: 'ANSWER_CHANGED', answer: event.target.value })}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                           submitAnswer()
@@ -458,49 +347,29 @@ export default function OperacionesTableroActivity() {
                       type="number"
                       value={answer}
                     />
-                    <button className="secondary-button" disabled={isRolling} onClick={submitAnswer} type="button">
+                    <ActionButton disabled={isRolling || answer.trim() === ''} onClick={submitAnswer} variant="secondary">
                       Responder
-                    </button>
+                    </ActionButton>
                   </div>
                 ) : null}
-              </div>
-
-              <div className="board-step-card board-finish-step">
-                <div className="board-step-heading">
-                  <span className="board-step-number">3</span>
-                  <strong>Finalizar</strong>
-                </div>
-                <button className="secondary-button board-end-button" onClick={requestFinishGame} type="button">
-                  Terminar juego
-                </button>
+                {feedback === 'correct' ? <FeedbackBanner title="Respuesta correcta" tone="success">La casilla quedó marcada. Sigue el próximo turno.</FeedbackBanner> : null}
+                {feedback === 'wrong' ? <FeedbackBanner title="Respuesta incorrecta" tone="danger">El turno terminó. Sigue el próximo jugador.</FeedbackBanner> : null}
               </div>
             </>
           )}
         </aside>
       </div>
 
-      {showFinishConfirm ? (
-        <div className="board-modal-backdrop" role="presentation">
-          <section
-            aria-labelledby="board-finish-title"
-            aria-modal="true"
-            className="board-confirm-modal"
-            role="dialog"
-          >
-            <span className="task-badge">Terminar juego</span>
-            <h3 id="board-finish-title">¿Seguro que quieres terminar?</h3>
-            <p>Se cerrará la partida actual y se mostrarán los puntajes finales.</p>
-            <div className="board-confirm-actions">
-              <button className="secondary-button" onClick={cancelFinishGame} type="button">
-                Seguir jugando
-              </button>
-              <button className="primary-button" onClick={confirmFinishGame} type="button">
-                Sí, terminar
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        cancelLabel="Seguir jugando"
+        confirmLabel="Terminar partida"
+        description="Se cerrará la partida actual y volverás al menú de configuración."
+        onCancel={cancelFinishGame}
+        onConfirm={confirmFinishGame}
+        open={showFinishConfirm}
+        title="¿Terminar la partida?"
+        tone="danger"
+      />
     </section>
   )
 }
@@ -592,9 +461,9 @@ function FinishedPanel({ players, onRestart }: { players: Player[]; onRestart: (
           </div>
         ))}
       </div>
-      <button className="primary-button" onClick={onRestart} type="button">
+      <ActionButton onClick={onRestart}>
         Jugar otra vez
-      </button>
+      </ActionButton>
     </div>
   )
 }

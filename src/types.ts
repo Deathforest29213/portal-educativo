@@ -1,8 +1,8 @@
-import type { ComponentType } from 'react'
+import type { ComponentType, LazyExoticComponent } from 'react'
 
 export type ActivityArea = 'Lenguaje' | 'Matemática'
 
-export type DownloadState = 'available' | 'downloading' | 'downloaded' | 'error'
+export type DownloadState = 'available' | 'downloading' | 'downloaded' | 'updating' | 'error'
 
 export type ActivityMigrationStatus = 'mvp' | 'planned' | 'archived'
 
@@ -17,10 +17,16 @@ export type Activity = {
   version: string
 }
 
-export type ActivityModule = {
+export type ActivityLoader = () => Promise<{ default: ComponentType }>
+
+export type ActivityDefinition = {
   activity: Activity
   assets: string[]
-  Component: ComponentType
+  load: ActivityLoader
+}
+
+export type ActivityModule = ActivityDefinition & {
+  Component: LazyExoticComponent<ComponentType>
 }
 
 export type DownloadRecord = {
@@ -28,6 +34,7 @@ export type DownloadRecord = {
   availableVersion: string
   downloadedAt: string | null
   downloadedVersion: string | null
+  errorMessage: string | null
   state: DownloadState
 }
 

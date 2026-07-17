@@ -1,5 +1,6 @@
 import type { Minihistory } from '../types'
 import { TopBar } from '../components/TopBar'
+import { ActionButton } from '../../../app/components/ActionButton'
 
 interface CollectionScreenProps {
   stories: Minihistory[]
@@ -25,9 +26,9 @@ export function CollectionScreen({
           juntas.
         </p>
         <div className="collection-actions">
-          <button className="result-button" type="button" onClick={onOpenPrint}>
+          <ActionButton onClick={onOpenPrint} variant="secondary">
             Imprimir PDF
-          </button>
+          </ActionButton>
         </div>
 
         <div className="collection-grid">
@@ -36,7 +37,7 @@ export function CollectionScreen({
             return (
               <button
                 key={story.id}
-                className="story-card soft"
+                className="story-card soft ui-card ui-card--interactive"
                 type="button"
                 onClick={() => onSelectStory(story.id)}
               >

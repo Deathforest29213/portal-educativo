@@ -1,39 +1,22 @@
-import { RotateCcw } from 'lucide-react'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { ArrowDown, ArrowUp, RotateCcw } from 'lucide-react'
+import { useEffect, useMemo, useReducer, type CSSProperties } from 'react'
+import { ActionButton } from '../../app/components/ActionButton'
+import { ConfirmDialog } from '../../app/components/ConfirmDialog'
+import { FeedbackBanner } from '../../app/components/FeedbackBanner'
+import { ProgressBadge } from '../../app/components/ProgressBadge'
+import { browserRandom, type RandomSource } from '../../platform/random/RandomSource'
 import './piramide-aritmetica.css'
-
-type DifficultyKey = 'easy' | 'medium' | 'hard'
-type CellId = `${number}-${number}`
-type Screen = 'setup' | 'playing'
-type OperationMode = 'sum' | 'subtract'
-
-type Difficulty = {
-  key: DifficultyKey
-  label: string
-  maxBaseValue: number
-  rows: number
-  numberRange: string
-  maxValue: number
-  revealRatio: number
-  tone: string
-  description: string
-}
-
-type Puzzle = {
-  clues: Set<CellId>
-  operationMode: OperationMode
-  solution: number[][]
-}
-
-type ErrorMark = {
-  remainingAnswers: number
-  token: number
-}
-
-type WrongAnswerMark = {
-  token: number
-  value: string
-}
+import {
+  createPyramidState,
+  pyramidReducer,
+  type CellId,
+  type Difficulty,
+  type DifficultyKey,
+  type ErrorMark,
+  type OperationMode,
+  type Puzzle,
+  type WrongAnswerMark,
+} from './domain/pyramidState'
 
 const DIFFICULTIES: Difficulty[] = [
   {
@@ -76,7 +59,6 @@ const BLOCK_COLORS: Record<DifficultyKey, string[]> = {
   medium: ['#5aa9e6', '#8fd7c8', '#f3d990', '#3f8fd2', '#7cc3ef', '#37a191', '#c6e4ff'],
   hard: ['#f89f82', '#e8bf5c', '#e79585', '#c86f5b', '#f3d990', '#d8896f', '#ffc0aa'],
 }
-
 const BLOCK_SHADOWS: Record<DifficultyKey, string[]> = {
   easy: ['#3f9a8a', '#d4ae58', '#c77a5f', '#26796e', '#c19a3f', '#5bb5a6', '#d79d7f'],
   medium: ['#3c82bb', '#5bb5a6', '#d4ae58', '#2c6fa7', '#559fc8', '#26796e', '#8dbfe4'],
@@ -84,27 +66,35 @@ const BLOCK_SHADOWS: Record<DifficultyKey, string[]> = {
 }
 
 export default function PiramideAritmeticaActivity() {
-  const [screen, setScreen] = useState<Screen>('setup')
-  const [difficultyKey, setDifficultyKey] = useState<DifficultyKey>('easy')
+  const [state, dispatch] = useReducer(
+    pyramidReducer,
+    undefined,
+    () => createPyramidState('easy', createPuzzle(DIFFICULTIES[0])),
+  )
+  const {
+    screen,
+    difficultyKey,
+    puzzle,
+    answers,
+    accepted,
+    errorMarks,
+    shakeMarks,
+    successMarks,
+    wrongAnswerMarks,
+    activeCell,
+    score,
+    streak,
+    bestStreak,
+    message,
+    showNewPuzzleConfirm,
+  } = state
   const difficulty = getDifficulty(difficultyKey)
-  const [puzzle, setPuzzle] = useState<Puzzle>(() => createPuzzle(difficulty))
-  const [answers, setAnswers] = useState<Record<CellId, string>>({})
-  const [accepted, setAccepted] = useState<Set<CellId>>(() => new Set())
-  const [errorMarks, setErrorMarks] = useState<Record<CellId, ErrorMark>>({})
-  const [shakeMarks, setShakeMarks] = useState<Record<CellId, number>>({})
-  const [successMarks, setSuccessMarks] = useState<Record<CellId, number>>({})
-  const [wrongAnswerMarks, setWrongAnswerMarks] = useState<Record<CellId, WrongAnswerMark>>({})
-  const [activeCell, setActiveCell] = useState<CellId | null>(null)
-  const [score, setScore] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [bestStreak, setBestStreak] = useState(0)
-  const [message, setMessage] = useState('Elige una dificultad para comenzar.')
-  const [showNewPuzzleConfirm, setShowNewPuzzleConfirm] = useState(false)
 
   const editableCells = useMemo(() => getEditableCells(puzzle), [puzzle])
   const completedCount = accepted.size
   const totalEditable = editableCells.length
   const isComplete = totalEditable > 0 && completedCount === totalEditable
+  const hasErrors = Object.keys(wrongAnswerMarks).length > 0 || Object.keys(errorMarks).length > 0
   const operationLabel = puzzle.operationMode === 'sum' ? 'Suma' : 'Resta'
   const operationSymbol = puzzle.operationMode === 'sum' ? '+' : '−'
 
@@ -116,17 +106,7 @@ export default function PiramideAritmeticaActivity() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      setShakeMarks((current) => {
-        const nextMarks = { ...current }
-
-        activeShakeMarks.forEach(([cellId, token]) => {
-          if (nextMarks[cellId as CellId] === token) {
-            delete nextMarks[cellId as CellId]
-          }
-        })
-
-        return nextMarks
-      })
+      dispatch({ type: 'CLEAR_SHAKES', marks: activeShakeMarks as Array<[CellId, number]> })
     }, 460)
 
     return () => window.clearTimeout(timeoutId)
@@ -140,17 +120,7 @@ export default function PiramideAritmeticaActivity() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      setSuccessMarks((current) => {
-        const nextMarks = { ...current }
-
-        activeSuccessMarks.forEach(([cellId, token]) => {
-          if (nextMarks[cellId as CellId] === token) {
-            delete nextMarks[cellId as CellId]
-          }
-        })
-
-        return nextMarks
-      })
+      dispatch({ type: 'CLEAR_SUCCESSES', marks: activeSuccessMarks as Array<[CellId, number]> })
     }, 520)
 
     return () => window.clearTimeout(timeoutId)
@@ -164,28 +134,9 @@ export default function PiramideAritmeticaActivity() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      setAnswers((current) => {
-        const nextAnswers = { ...current }
-
-        activeWrongAnswerMarks.forEach(([cellId, mark]) => {
-          if (wrongAnswerMarks[cellId as CellId]?.token === mark.token && nextAnswers[cellId as CellId] === mark.value) {
-            nextAnswers[cellId as CellId] = ''
-          }
-        })
-
-        return nextAnswers
-      })
-
-      setWrongAnswerMarks((current) => {
-        const nextMarks = { ...current }
-
-        activeWrongAnswerMarks.forEach(([cellId, mark]) => {
-          if (nextMarks[cellId as CellId]?.token === mark.token) {
-            delete nextMarks[cellId as CellId]
-          }
-        })
-
-        return nextMarks
+      dispatch({
+        type: 'EXPIRE_WRONG_ANSWERS',
+        marks: activeWrongAnswerMarks as Array<[CellId, WrongAnswerMark]>,
       })
     }, 1500)
 
@@ -194,37 +145,26 @@ export default function PiramideAritmeticaActivity() {
 
   function startGame(nextDifficulty = difficulty) {
     const nextPuzzle = createPuzzle(nextDifficulty)
-    setPuzzle(nextPuzzle)
-    setAnswers({})
-    setAccepted(new Set())
-    setErrorMarks({})
-    setShakeMarks({})
-    setSuccessMarks({})
-    setWrongAnswerMarks({})
-    setActiveCell(null)
-    setScore(0)
-    setStreak(0)
-    setBestStreak(0)
-    setShowNewPuzzleConfirm(false)
-    setMessage(
-      nextPuzzle.operationMode === 'sum'
-        ? 'Suma los bloques vecinos para completar los de arriba.'
-        : 'Resta desde el bloque de arriba para encontrar el vecino que falta.',
-    )
-    setScreen('playing')
+    dispatch({
+      type: 'START_GAME',
+      difficultyKey: nextDifficulty.key,
+      puzzle: nextPuzzle,
+      message: nextPuzzle.operationMode === 'sum'
+        ? 'Completa cada bloque sumando los dos de abajo.'
+        : 'Resta al bloque de arriba el número conocido.',
+    })
   }
 
   function backToMenu() {
-    setScreen('setup')
-    setMessage('Elige una dificultad para comenzar.')
+    dispatch({ type: 'BACK_TO_MENU' })
   }
 
   function startNewPuzzle() {
-    setShowNewPuzzleConfirm(true)
+    dispatch({ type: 'REQUEST_NEW_PUZZLE' })
   }
 
   function cancelNewPuzzle() {
-    setShowNewPuzzleConfirm(false)
+    dispatch({ type: 'CANCEL_NEW_PUZZLE' })
   }
 
   function confirmNewPuzzle() {
@@ -233,16 +173,7 @@ export default function PiramideAritmeticaActivity() {
 
   function updateAnswer(cellId: CellId, value: string) {
     const cleanValue = value.replace(/[^\d]/g, '').slice(0, 3)
-    setAnswers((current) => ({ ...current, [cellId]: cleanValue }))
-    setWrongAnswerMarks((current) => {
-      if (!current[cellId]) {
-        return current
-      }
-
-      const nextMarks = { ...current }
-      delete nextMarks[cellId]
-      return nextMarks
-    })
+    dispatch({ type: 'ANSWER_CHANGED', cellId, value: cleanValue })
 
     const expectedValue = getCellValue(puzzle.solution, cellId)
     const expectedLength = expectedValue.toString().length
@@ -307,27 +238,31 @@ export default function PiramideAritmeticaActivity() {
       }
     })
 
-    setAccepted(nextAccepted)
-    setAnswers(nextAnswers)
-    setErrorMarks(nextErrorMarks)
-    setShakeMarks(nextShakeMarks)
-    setSuccessMarks(nextSuccessMarks)
-    setWrongAnswerMarks(nextWrongAnswerMarks)
-    setScore(nextScore)
-    setStreak(nextStreak)
-    setBestStreak(nextBestStreak)
+    const nextMessage = correctCount > 0 && wrongCount === 0
+      ? correctCount === 1 ? '¡Bien! Esa casilla está correcta.' : '¡Bien! Esas casillas están correctas.'
+      : correctCount > 0 && wrongCount > 0
+        ? 'Hay aciertos y también casillas para corregir.'
+        : wrongCount > 0 && difficulty.key === 'hard'
+          ? 'Revisa las casillas marcadas y sigue intentando.'
+          : wrongCount > 0
+            ? 'La respuesta se borró para intentarlo de nuevo.'
+            : 'Completa una casilla antes de revisar.'
 
-    if (correctCount > 0 && wrongCount === 0) {
-      setMessage(correctCount === 1 ? '¡Bien! Esa casilla está correcta.' : '¡Bien! Esas casillas están correctas.')
-    } else if (correctCount > 0 && wrongCount > 0) {
-      setMessage('Hay aciertos y también casillas para corregir.')
-    } else if (wrongCount > 0 && difficulty.key === 'hard') {
-      setMessage('Revisa las casillas marcadas y sigue intentando.')
-    } else if (wrongCount > 0) {
-      setMessage('La respuesta se borró para intentarlo de nuevo.')
-    } else {
-      setMessage('Completa una casilla antes de revisar.')
-    }
+    dispatch({
+      type: 'APPLY_REVIEW',
+      payload: {
+        accepted: nextAccepted,
+        answers: nextAnswers,
+        errorMarks: nextErrorMarks,
+        shakeMarks: nextShakeMarks,
+        successMarks: nextSuccessMarks,
+        wrongAnswerMarks: nextWrongAnswerMarks,
+        score: nextScore,
+        streak: nextStreak,
+        bestStreak: nextBestStreak,
+        message: nextMessage,
+      },
+    })
   }
 
   if (screen === 'setup') {
@@ -358,7 +293,7 @@ export default function PiramideAritmeticaActivity() {
                     aria-checked={isSelected}
                     className={isSelected ? 'is-selected' : ''}
                     key={item.key}
-                    onClick={() => setDifficultyKey(item.key)}
+                    onClick={() => dispatch({ type: 'SELECT_DIFFICULTY', difficultyKey: item.key })}
                     role="radio"
                     style={{ '--board-card-tone': item.tone } as CSSProperties}
                     type="button"
@@ -374,9 +309,9 @@ export default function PiramideAritmeticaActivity() {
             </div>
           </article>
 
-          <button className="primary-button board-start-button pyramid-start-button" onClick={() => startGame()} type="button">
-            Comenzar
-          </button>
+          <ActionButton className="board-start-button pyramid-start-button" onClick={() => startGame()}>
+            Comenzar actividad
+          </ActionButton>
         </div>
       </section>
     )
@@ -388,9 +323,9 @@ export default function PiramideAritmeticaActivity() {
       style={{ '--board-tone': difficulty.tone, '--pyramid-tone': difficulty.tone } as CSSProperties}
     >
       <div className="activity-back-row">
-        <button className="activity-back-pill" onClick={backToMenu} type="button">
+        <ActionButton onClick={backToMenu} variant="quiet">
           ← Volver al menú
-        </button>
+        </ActionButton>
       </div>
 
       <div className="pyramid-layout">
@@ -440,10 +375,10 @@ export default function PiramideAritmeticaActivity() {
                             aria-label={`Casilla fila ${rowIndex + 1}, posición ${colIndex + 1}`}
                             inputMode="numeric"
                             onChange={(event) => updateAnswer(cellId, event.target.value)}
-                            onFocus={() => setActiveCell(cellId)}
+                            onFocus={() => dispatch({ type: 'SET_ACTIVE_CELL', cellId })}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter') {
-                                setActiveCell(cellId)
+                                dispatch({ type: 'SET_ACTIVE_CELL', cellId })
                                 reviewCells([cellId])
                               }
                             }}
@@ -451,6 +386,9 @@ export default function PiramideAritmeticaActivity() {
                             value={answers[cellId] ?? ''}
                           />
                         )}
+                        <span className="sr-only">
+                          {isClue ? 'Pista' : isAccepted ? 'Respuesta correcta' : hasHardError || hasSoftError ? 'Respuesta incorrecta' : 'Respuesta pendiente'}
+                        </span>
                       </label>
                     )
                   })}
@@ -474,7 +412,18 @@ export default function PiramideAritmeticaActivity() {
           <div className="pyramid-info-heading">
             <span className="task-badge">Dificultad {difficulty.label}</span>
             <h2>Completa la pirámide</h2>
-            <p>{message}</p>
+            <FeedbackBanner
+              className={!isComplete && !hasErrors ? 'pyramid-instruction' : ''}
+              icon={!isComplete && !hasErrors
+                ? puzzle.operationMode === 'sum'
+                  ? <ArrowUp aria-hidden="true" size={18} />
+                  : <ArrowDown aria-hidden="true" size={18} />
+                : undefined}
+              title={isComplete ? '¡Pirámide completa!' : hasErrors ? 'Revisa la respuesta' : undefined}
+              tone={isComplete ? 'success' : hasErrors ? 'danger' : 'info'}
+            >
+              {message}
+            </FeedbackBanner>
           </div>
 
           <div className="pyramid-info-pills" aria-label="Datos del ejercicio">
@@ -489,6 +438,8 @@ export default function PiramideAritmeticaActivity() {
             <ScoreCard label="Avance" value={`${completedCount}/${totalEditable}`} />
           </div>
 
+          <ProgressBadge current={completedCount} label="Casillas completas" total={totalEditable} />
+
           {isComplete ? (
             <div className="pyramid-complete-note">
               <strong>¡Pirámide completa!</strong>
@@ -496,35 +447,21 @@ export default function PiramideAritmeticaActivity() {
             </div>
           ) : null}
 
-          <button className="secondary-button pyramid-new-button" onClick={startNewPuzzle} type="button">
-            <RotateCcw aria-hidden="true" size={18} />
+          <ActionButton className="pyramid-new-button" icon={<RotateCcw aria-hidden="true" size={18} />} onClick={startNewPuzzle} variant="secondary">
             Nueva pirámide
-          </button>
+          </ActionButton>
         </aside>
       </div>
 
-      {showNewPuzzleConfirm ? (
-        <div className="pyramid-modal-backdrop" role="presentation">
-          <section
-            aria-labelledby="pyramid-new-title"
-            aria-modal="true"
-            className="pyramid-confirm-modal"
-            role="dialog"
-          >
-            <span className="task-badge">Nueva pirámide</span>
-            <h3 id="pyramid-new-title">¿Cambiar la pirámide?</h3>
-            <p>Se perderán las respuestas y el puntaje de esta ronda.</p>
-            <div className="pyramid-confirm-actions">
-              <button className="secondary-button" onClick={cancelNewPuzzle} type="button">
-                Seguir aquí
-              </button>
-              <button className="primary-button" onClick={confirmNewPuzzle} type="button">
-                Sí, cambiar
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        confirmLabel="Cambiar pirámide"
+        description="Se perderán las respuestas y el puntaje de esta ronda."
+        onCancel={cancelNewPuzzle}
+        onConfirm={confirmNewPuzzle}
+        open={showNewPuzzleConfirm}
+        title="¿Cambiar la pirámide?"
+        tone="danger"
+      />
     </section>
   )
 }
@@ -556,24 +493,24 @@ function getDifficulty(key: DifficultyKey) {
   return DIFFICULTIES.find((difficulty) => difficulty.key === key) ?? DIFFICULTIES[0]
 }
 
-function createPuzzle(difficulty: Difficulty): Puzzle {
-  const solution = createSolution(difficulty)
+function createPuzzle(difficulty: Difficulty, random: RandomSource = browserRandom): Puzzle {
+  const solution = createSolution(difficulty, random)
   const totalCells = solution.reduce((total, row) => total + row.length, 0)
   const clueCount = Math.max(difficulty.rows, Math.round(totalCells * difficulty.revealRatio))
   const allCells = solution.flatMap((row, rowIndex) => row.map((_, colIndex) => makeCellId(rowIndex, colIndex)))
-  const operationMode: OperationMode = Math.random() > 0.5 ? 'sum' : 'subtract'
+  const operationMode: OperationMode = random.next() > 0.5 ? 'sum' : 'subtract'
   const clues =
     operationMode === 'sum'
-      ? createSumClues(solution, clueCount)
-      : createSubtractClues(solution, totalCells - clueCount)
+      ? createSumClues(solution, clueCount, random)
+      : createSubtractClues(solution, totalCells - clueCount, random)
 
   return { clues, operationMode, solution }
 }
 
-function createSolution(difficulty: Difficulty) {
+function createSolution(difficulty: Difficulty, random: RandomSource) {
   const coefficients = getBaseCoefficients(difficulty.rows)
   const base = Array.from({ length: difficulty.rows }, () => 1)
-  const targetTopValue = getTargetTopValue(difficulty)
+  const targetTopValue = getTargetTopValue(difficulty, random)
   let remaining = targetTopValue - coefficients.reduce((total, coefficient) => total + coefficient, 0)
 
   while (remaining > 0) {
@@ -585,7 +522,7 @@ function createSolution(difficulty: Difficulty) {
       break
     }
 
-    const candidate = candidates[randomInt(0, candidates.length - 1)]
+    const candidate = random.pick(candidates)
     base[candidate.index] += 1
     remaining -= candidate.coefficient
   }
@@ -600,16 +537,16 @@ function createSolution(difficulty: Difficulty) {
   return rowsFromBase.reverse()
 }
 
-function getTargetTopValue(difficulty: Difficulty) {
+function getTargetTopValue(difficulty: Difficulty, random: RandomSource) {
   if (difficulty.key === 'easy') {
     return 10
   }
 
   if (difficulty.key === 'medium') {
-    return randomInt(33, 40)
+    return random.int(33, 40)
   }
 
-  return randomInt(85, 100)
+  return random.int(85, 100)
 }
 
 function getEditableCells(puzzle: Puzzle) {
@@ -618,14 +555,14 @@ function getEditableCells(puzzle: Puzzle) {
     .filter((cellId) => !puzzle.clues.has(cellId))
 }
 
-function createSumClues(solution: number[][], clueCount: number) {
+function createSumClues(solution: number[][], clueCount: number, random: RandomSource) {
   const baseRowIndex = solution.length - 1
   const clues = new Set<CellId>(solution[baseRowIndex].map((_, colIndex) => makeCellId(baseRowIndex, colIndex)))
   const upperCells = solution
     .slice(0, -1)
     .flatMap((row, rowIndex) => row.map((_, colIndex) => makeCellId(rowIndex, colIndex)))
 
-  shuffle(upperCells).forEach((cellId) => {
+  random.shuffle(upperCells).forEach((cellId) => {
     if (clues.size < clueCount) {
       clues.add(cellId)
     }
@@ -634,7 +571,7 @@ function createSumClues(solution: number[][], clueCount: number) {
   return clues
 }
 
-function createSubtractClues(solution: number[][], targetHiddenCount: number) {
+function createSubtractClues(solution: number[][], targetHiddenCount: number, random: RandomSource) {
   const allCells = solution.flatMap((row, rowIndex) => row.map((_, colIndex) => makeCellId(rowIndex, colIndex)))
   const candidates = allCells.filter((cellId) => !cellId.startsWith('0-'))
   let hidden = new Set<CellId>()
@@ -642,7 +579,7 @@ function createSubtractClues(solution: number[][], targetHiddenCount: number) {
   for (let attempt = 0; attempt < 90; attempt += 1) {
     const nextHidden = new Set<CellId>()
 
-    shuffle(candidates).forEach((cellId) => {
+    random.shuffle(candidates).forEach((cellId) => {
       if (nextHidden.size >= targetHiddenCount) {
         return
       }
@@ -730,12 +667,4 @@ function tickErrorMarks(errorMarks: Record<CellId, ErrorMark>, answerCount: numb
   })
 
   return nextMarks
-}
-
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min
-}
-
-function shuffle<T>(items: T[]) {
-  return [...items].sort(() => Math.random() - 0.5)
 }

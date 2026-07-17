@@ -1,5 +1,14 @@
 node_modules
 dist
+build
+coverage
 *.log
 *.local
 *.tsbuildinfo
+.env*
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.tmp
+*.swp

@@ -1,5 +1,7 @@
 import { PyramidStack } from '../components/PyramidStack'
 import { TopBar } from '../components/TopBar'
+import { ActionButton } from '../../../app/components/ActionButton'
+import { ProgressBadge } from '../../../app/components/ProgressBadge'
 import type { Minihistory } from '../types'
 import type { CSSProperties } from 'react'
 import { getCurrentImage } from '../utils/pyramid'
@@ -34,14 +36,12 @@ export function ExerciseScreen({
         <div className="visual-panel glass">
           <div className="story-badges">
             <div className="badge">{story.badge}</div>
-            <div className="badge">
-              Paso {lineIndex + 1} de {story.lines.length}
-            </div>
+            <ProgressBadge current={lineIndex + 1} label="Paso" total={story.lines.length} />
           </div>
 
           <h2 className="story-title">{story.title}</h2>
 
-          <div className="progress" style={{ '--progress': `${progress}%` } as CSSProperties}>
+          <div aria-hidden="true" className="progress" style={{ '--progress': `${progress}%` } as CSSProperties}>
             <span />
           </div>
 
@@ -61,7 +61,7 @@ export function ExerciseScreen({
           </div>
         </div>
 
-        <div className="pyramid-panel glass">
+        <div className="pyramid-panel glass reading-copy">
           <div className="eyebrow">
             <span>🔺</span>
             <span>Pirámide de lectura</span>
@@ -71,9 +71,9 @@ export function ExerciseScreen({
           <PyramidStack story={story} visibleCount={lineIndex + 1} />
 
           <div className="controls">
-            <button className="secondary-button" type="button" onClick={onRestart}>
+            <ActionButton onClick={onRestart} variant="secondary">
               Reiniciar lectura
-            </button>
+            </ActionButton>
           </div>
         </div>
       </section>

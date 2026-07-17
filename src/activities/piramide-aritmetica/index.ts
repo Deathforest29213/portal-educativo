@@ -1,7 +1,6 @@
-import PiramideAritmeticaActivity from './PiramideAritmeticaActivity'
-import type { ActivityModule } from '../../types'
+import { defineActivity } from '../defineActivity'
 
-export const piramideAritmeticaModule: ActivityModule = {
+export const piramideAritmeticaModule = defineActivity({
   activity: {
     id: 'piramide-aritmetica',
     title: 'Pirámide Aritmética',
@@ -13,5 +12,5 @@ export const piramideAritmeticaModule: ActivityModule = {
     migrationStatus: 'mvp',
   },
   assets: ['/'],
-  Component: PiramideAritmeticaActivity,
-}
+  load: () => import('./PiramideAritmeticaActivity'),
+})

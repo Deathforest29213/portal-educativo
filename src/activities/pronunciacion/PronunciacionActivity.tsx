@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Cpu,
   Image,
-  Loader2,
   Mic,
   Monitor,
   RefreshCcw,
@@ -17,8 +16,13 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { ActionButton } from '../../app/components/ActionButton'
+import { FeedbackBanner } from '../../app/components/FeedbackBanner'
+import { ProgressBadge } from '../../app/components/ProgressBadge'
 import { miniStories, whisperModels, type MiniStory } from './data/content'
 import { comparePronunciation, type PronunciationComparison } from './domain/matching'
+import type { TranscriptionEngine, TranscriptionEvent, TranscriptionProgress } from './domain/transcription'
+import { createWhisperTranscriptionEngine } from './infrastructure/WhisperWebGpuEngine'
 
 type DeviceReport = {
   adapter: string
@@ -35,11 +39,7 @@ type DeviceReport = {
   webgpu: boolean
 }
 
-type ProgressItem = {
-  file: string
-  progress?: number
-  total?: number
-}
+type ProgressItem = TranscriptionProgress
 
 type WorkerStatus = 'idle' | 'loading' | 'ready' | 'recording' | 'transcribing' | 'error'
 type Stage = 'setup' | 'stories' | 'practice' | 'complete'
@@ -66,7 +66,7 @@ export default function PronunciacionActivity() {
   const [noiseLevel, setNoiseLevel] = useState(0)
   const [microphoneError, setMicrophoneError] = useState('')
   const chunksRef = useRef<Blob[]>([])
-  const workerRef = useRef<Worker | null>(null)
+  const transcriptionEngineRef = useRef<TranscriptionEngine | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -100,7 +100,7 @@ export default function PronunciacionActivity() {
     return () => {
       cancelled = true
       cleanupAudio()
-      workerRef.current?.terminate()
+      transcriptionEngineRef.current?.dispose()
     }
   }, [])
 
@@ -116,59 +116,39 @@ export default function PronunciacionActivity() {
     currentSentenceRef.current = currentSentence
   }, [currentSentence])
 
-  function ensureWorker() {
-    if (workerRef.current) return workerRef.current
+  function ensureTranscriptionEngine() {
+    if (transcriptionEngineRef.current) return transcriptionEngineRef.current
 
-    const worker = new Worker(new URL('./whisperWorker.ts', import.meta.url), { type: 'module' })
-    worker.addEventListener('message', (event) => {
-      const data = event.data
+    const engine = createWhisperTranscriptionEngine()
+    engine.subscribe(handleTranscriptionEvent)
+    transcriptionEngineRef.current = engine
+    return engine
+  }
 
-      if (data.status === 'loading') {
-        setWorkerStatus('loading')
-        setLoadingMessage(data.data ?? 'Cargando modelo...')
-        return
-      }
-
-      if (data.status === 'initiate' || data.status === 'progress') {
-        setProgressItems((items) => upsertProgress(items, data))
-        return
-      }
-
-      if (data.status === 'done') {
-        setProgressItems((items) => items.filter((item) => item.file !== data.file))
-        return
-      }
-
-      if (data.status === 'ready') {
-        setLoadedModelId(data.modelId)
-        setWorkerStatus('ready')
-        setLoadingMessage('Modelo listo')
-        return
-      }
-
-      if (data.status === 'start') {
-        setWorkerStatus('transcribing')
-        return
-      }
-
-      if (data.status === 'complete') {
-        const text = data.text ?? ''
-        const nextComparison = comparePronunciation(currentSentenceRef.current, text)
-        setSpokenText(text)
-        setComparison(nextComparison)
-        setAttempts((value) => value + 1)
-        setWorkerStatus('ready')
-        return
-      }
-
-      if (data.status === 'error') {
-        setWorkerStatus('error')
-        setWorkerError(data.message ?? 'No se pudo transcribir el audio.')
-      }
-    })
-
-    workerRef.current = worker
-    return worker
+  function handleTranscriptionEvent(event: TranscriptionEvent) {
+    if (event.type === 'loading') {
+      setWorkerStatus('loading')
+      setLoadingMessage(event.message)
+    } else if (event.type === 'progress') {
+      setProgressItems((items) => upsertProgress(items, event.item))
+    } else if (event.type === 'file-complete') {
+      setProgressItems((items) => items.filter((item) => item.file !== event.file))
+    } else if (event.type === 'ready') {
+      setLoadedModelId(event.modelId)
+      setWorkerStatus('ready')
+      setLoadingMessage('Modelo listo')
+    } else if (event.type === 'transcribing') {
+      setWorkerStatus('transcribing')
+    } else if (event.type === 'complete') {
+      const text = event.text
+      setSpokenText(text)
+      setComparison(comparePronunciation(currentSentenceRef.current, text))
+      setAttempts((value) => value + 1)
+      setWorkerStatus('ready')
+    } else {
+      setWorkerStatus('error')
+      setWorkerError(event.message)
+    }
   }
 
   function loadSelectedModel() {
@@ -180,7 +160,7 @@ export default function PronunciacionActivity() {
     setWorkerError('')
     setProgressItems([])
     setWorkerStatus('loading')
-    ensureWorker().postMessage({ type: 'load', data: { modelId: selectedModelId } })
+    ensureTranscriptionEngine().load(selectedModelId)
   }
 
   async function startRecording() {
@@ -228,7 +208,7 @@ export default function PronunciacionActivity() {
       const trimmed = channel.length > maxLength ? channel.slice(channel.length - maxLength) : channel
       const audio = new Float32Array(trimmed)
 
-      ensureWorker().postMessage({ type: 'transcribe', data: { audio, modelId: selectedModelId } }, [audio.buffer])
+      ensureTranscriptionEngine().transcribe(selectedModelId, audio)
     } catch (error) {
       setWorkerStatus('ready')
       setWorkerError(error instanceof Error ? error.message : 'No se pudo procesar la grabación.')
@@ -339,10 +319,9 @@ export default function PronunciacionActivity() {
         <h2>¡Muy bien! Terminaste {selectedStory.title}</h2>
         <p>Leíste todas las oraciones en voz alta.</p>
         <div className="pronunciation-actions">
-          <button className="primary-button" onClick={returnToStories} type="button">
-            <RefreshCcw size={18} />
+          <ActionButton icon={<RefreshCcw aria-hidden="true" size={18} />} onClick={returnToStories}>
             Elegir otra minihistoria
-          </button>
+          </ActionButton>
         </div>
       </section>
     )
@@ -424,7 +403,7 @@ function SetupScreen(props: {
           <section className="pronunciation-hero">
             <span className="task-badge">Rezago lector</span>
             <h2>Hola, vamos a practicar lectura en voz alta</h2>
-            <p>Primero descarga el modelo de voz para este equipo.</p>
+            <p>Primero prepara el reconocimiento de voz en este equipo.</p>
           </section>
 
           <section className="pronunciation-panel">
@@ -432,6 +411,7 @@ function SetupScreen(props: {
             <div className="pronunciation-models">
               {whisperModels.map((model) => (
                 <button
+                  aria-pressed={props.selectedModelId === model.id}
                   className={props.selectedModelId === model.id ? 'is-selected' : ''}
                   key={model.id}
                   onClick={() => props.setSelectedModelId(model.id)}
@@ -448,28 +428,27 @@ function SetupScreen(props: {
           </section>
 
           <section className="pronunciation-panel pronunciation-load-panel">
-            <PanelTitle icon={<Mic size={20} />} title="Preparar Whisper" />
-            <p>La primera carga descarga el modelo. Después queda guardado en caché del navegador.</p>
-            <button
-              className="primary-button"
+            <PanelTitle icon={<Mic size={20} />} title="Preparar reconocimiento de voz" />
+            <p>La primera preparación descarga un recurso de voz. Después queda guardado en este navegador.</p>
+            <ActionButton
+              busy={props.workerStatus === 'loading'}
+              busyLabel="Preparando recurso"
               disabled={props.workerStatus === 'loading' || !props.isCompatible}
+              icon={<Cpu aria-hidden="true" size={18} />}
               onClick={props.onLoadModel}
-              type="button"
             >
-              {props.workerStatus === 'loading' ? <Loader2 className="spin" size={18} /> : <Cpu size={18} />}
-              {props.workerStatus === 'loading' ? 'Cargando...' : 'Descargar modelo'}
-            </button>
+              Preparar recurso de voz
+            </ActionButton>
             {props.loadingMessage ? <p className="pronunciation-loading-text">{props.loadingMessage}</p> : null}
             {props.progressItems.length > 0 ? <ProgressList items={props.progressItems} /> : null}
-            {props.workerError ? <p className="pronunciation-error">{props.workerError}</p> : null}
+            {props.workerError ? <FeedbackBanner title="No pudimos preparar la voz" tone="danger">{props.workerError} Inténtalo de nuevo.</FeedbackBanner> : null}
           </section>
 
           <section className="pronunciation-start-panel">
             <span>Cuando el modelo esté listo</span>
-            <button className="primary-button" disabled={!props.canStart} onClick={props.onStart} type="button">
+            <ActionButton disabled={!props.canStart} icon={<ChevronRight aria-hidden="true" size={18} />} onClick={props.onStart}>
               Elegir minihistoria
-              <ChevronRight size={18} />
-            </button>
+            </ActionButton>
           </section>
         </div>
 
@@ -496,7 +475,7 @@ function StoryMenuScreen(props: {
           <section className="pronunciation-hero">
             <span className="task-badge">Rezago lector</span>
             <h2>Elige una minihistoria</h2>
-            <p>Lee cada oración en voz alta. Whisper escuchará tu voz.</p>
+            <p>Lee cada oración en voz alta. La actividad escuchará y te ayudará a revisar.</p>
           </section>
 
           <section className="pronunciation-panel pronunciation-story-list">
@@ -513,10 +492,9 @@ function StoryMenuScreen(props: {
                     <p>{story.description}</p>
                     <small>{story.sentences.length} oraciones cortas</small>
                   </div>
-                  <button className="primary-button" onClick={() => props.onChooseStory(story)} type="button">
+                  <ActionButton icon={<ChevronRight aria-hidden="true" size={18} />} onClick={() => props.onChooseStory(story)}>
                     Comenzar
-                    <ChevronRight size={18} />
-                  </button>
+                  </ActionButton>
                 </article>
               ))}
             </div>
@@ -552,10 +530,9 @@ function EquipmentSidebar(props: {
       ) : (
         <p>Revisando este equipo...</p>
       )}
-      <button className="secondary-button" onClick={props.onOpenSpecs} type="button">
-        <Monitor size={18} />
-        Ver especificaciones
-      </button>
+      <ActionButton icon={<Monitor aria-hidden="true" size={18} />} onClick={props.onOpenSpecs} variant="secondary">
+        Ver detalles del equipo
+      </ActionButton>
     </aside>
   )
 }
@@ -587,7 +564,7 @@ function PracticeScreen(props: {
       <main className="pronunciation-practice">
         <header className="pronunciation-topbar">
           <div>
-            <span className="task-badge">Oración {props.currentIndex + 1} de {props.story.sentences.length}</span>
+            <ProgressBadge current={props.currentIndex + 1} label="Oración" total={props.story.sentences.length} />
             <h2>{props.story.title}</h2>
             <p>Lee la oración actual con calma.</p>
           </div>
@@ -610,25 +587,23 @@ function PracticeScreen(props: {
         </section>
 
         <div className="pronunciation-controls">
-          <button className="secondary-button" onClick={props.onSpeak} type="button">
-            <Volume2 size={20} />
+          <ActionButton icon={<Volume2 aria-hidden="true" size={20} />} onClick={props.onSpeak} variant="secondary">
             Escuchar
-          </button>
+          </ActionButton>
           {isRecording ? (
-            <button className="danger-button" onClick={props.onStopRecording} type="button">
-              <Square size={20} />
+            <ActionButton icon={<Square aria-hidden="true" size={20} />} onClick={props.onStopRecording} variant="danger">
               Detener
-            </button>
+            </ActionButton>
           ) : (
-            <button
-              className="primary-button"
+            <ActionButton
+              busy={isBusy}
+              busyLabel="Revisando lectura"
               disabled={isBusy}
+              icon={<Mic aria-hidden="true" size={20} />}
               onClick={props.onStartRecording}
-              type="button"
             >
-              {isBusy ? <Loader2 className="spin" size={20} /> : <Mic size={20} />}
-              {isBusy ? 'Revisando...' : 'Grabar'}
-            </button>
+              Grabar lectura
+            </ActionButton>
           )}
         </div>
 
@@ -639,18 +614,18 @@ function PracticeScreen(props: {
 
         {props.spokenText ? (
           <section className="pronunciation-transcript">
-            <span>Whisper escuchó</span>
+            <span>Esto escuchamos</span>
             <p>{props.spokenText}</p>
           </section>
         ) : props.comparison ? (
           <section className="pronunciation-transcript">
-            <span>Whisper escuchó</span>
+            <span>Esto escuchamos</span>
             <p>No se escuchó una palabra clara.</p>
           </section>
         ) : null}
 
         {props.comparison ? (
-          <section className={`pronunciation-feedback ${props.comparison.accepted ? 'is-ok' : 'is-try'}`}>
+          <FeedbackBanner className="pronunciation-feedback" title={props.comparison.accepted ? 'Lectura clara' : 'Probemos de nuevo'} tone={props.comparison.accepted ? 'success' : 'warning'}>
             <strong>
               {props.comparison.accepted
                 ? 'Muy bien, se entendió claro.'
@@ -663,17 +638,16 @@ function PracticeScreen(props: {
               <small>También se escuchó: {props.comparison.extraWords.join(', ')}</small>
             ) : null}
             {!canGoNext ? <small>Inténtalo de nuevo para avanzar a la próxima oración.</small> : null}
-            <button className="primary-button" disabled={!canGoNext} onClick={props.onNext} type="button">
+            <ActionButton disabled={!canGoNext} icon={<ChevronRight aria-hidden="true" size={18} />} onClick={props.onNext}>
               Siguiente
-              <ChevronRight size={18} />
-            </button>
-          </section>
+            </ActionButton>
+          </FeedbackBanner>
         ) : (
           <p className="pronunciation-helper">Graba tu lectura para revisar la oración.</p>
         )}
 
-        {props.microphoneError ? <p className="pronunciation-error">{props.microphoneError}</p> : null}
-        {props.workerError ? <p className="pronunciation-error">{props.workerError}</p> : null}
+        {props.microphoneError ? <FeedbackBanner title="Revisa el micrófono" tone="danger">{props.microphoneError}</FeedbackBanner> : null}
+        {props.workerError ? <FeedbackBanner title="No pudimos revisar la lectura" tone="danger">{props.workerError} Inténtalo nuevamente.</FeedbackBanner> : null}
       </main>
 
       <aside className="pronunciation-story-sidebar">
@@ -707,24 +681,42 @@ function SpecModal({
   isCompatible: boolean
   onClose: () => void
 }) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) dialog.showModal()
+
+    return () => {
+      if (dialog?.open) dialog.close()
+    }
+  }, [])
+
   return (
-    <div className="pronunciation-modal-backdrop" role="presentation">
-      <section aria-labelledby="spec-modal-title" className="pronunciation-modal" role="dialog">
-        <button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">
-          <X size={19} />
-        </button>
-        {isCompatible ? <Monitor size={30} /> : <AlertTriangle size={30} />}
-        <h2 id="spec-modal-title">
-          {isCompatible ? 'Especificaciones del equipo' : 'Este equipo no cumple las especificaciones básicas'}
-        </h2>
-        <p>
-          {isCompatible
-            ? 'Este equipo puede cargar Whisper WebGPU para trabajar localmente en el navegador.'
-            : 'Para usar Whisper local se necesita Chrome o Edge actualizado, WebGPU activo, aceleración por hardware y micrófono disponible.'}
-        </p>
-        <SpecList deviceReport={deviceReport} />
-      </section>
-    </div>
+    <dialog
+      aria-describedby="spec-modal-description"
+      aria-labelledby="spec-modal-title"
+      className="pronunciation-modal"
+      onCancel={onClose}
+      onClick={(event) => {
+        if (event.currentTarget === event.target) onClose()
+      }}
+      ref={dialogRef}
+    >
+      <button aria-label="Cerrar" autoFocus className="icon-button" onClick={onClose} type="button">
+        <X size={19} />
+      </button>
+      {isCompatible ? <Monitor size={30} /> : <AlertTriangle size={30} />}
+      <h2 id="spec-modal-title">
+        {isCompatible ? 'Especificaciones del equipo' : 'Este equipo no cumple las especificaciones básicas'}
+      </h2>
+      <p id="spec-modal-description">
+        {isCompatible
+          ? 'Este equipo puede cargar Whisper WebGPU para trabajar localmente en el navegador.'
+          : 'Para usar Whisper local se necesita Chrome o Edge actualizado, WebGPU activo, aceleración por hardware y micrófono disponible.'}
+      </p>
+      <SpecList deviceReport={deviceReport} />
+    </dialog>
   )
 }
 

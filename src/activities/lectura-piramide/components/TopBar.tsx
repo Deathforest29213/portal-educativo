@@ -8,9 +8,9 @@ export function TopBar({ label, backLabel = 'Volver a la lectura', onBack }: Top
   return (
     <div className="lp-topbar">
       {onBack ? (
-        <button className="lp-back-button" type="button" onClick={onBack}>
+        <ActionButton className="lp-back-button" onClick={onBack} variant="quiet">
           ← {backLabel}
-        </button>
+        </ActionButton>
       ) : (
         <div />
       )}
@@ -18,3 +18,4 @@ export function TopBar({ label, backLabel = 'Volver a la lectura', onBack }: Top
     </div>
   )
 }
+import { ActionButton } from '../../../app/components/ActionButton'

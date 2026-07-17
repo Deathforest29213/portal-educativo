@@ -235,6 +235,22 @@
   line-height: 1.25;
 }
 
+.pyramid-instruction {
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.pyramid-instruction svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pyramid-instruction .feedback-banner__content {
+  font-weight: 750;
+  line-height: 1.25;
+}
+
 .pyramid-info-pills {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -604,5 +620,83 @@
     width: 86%;
     height: 70%;
     padding: 5px 4px;
+  }
+}
+
+/* Portal visual-system alignment ------------------------------------------ */
+
+.activity-view--math .arithmetic-pyramid {
+  color: var(--color-text);
+}
+
+.activity-view--math .pyramid-layout {
+  grid-template-columns: minmax(0, 1.5fr) minmax(19rem, 0.65fr);
+  align-items: start;
+}
+
+.activity-view--math .pyramid-workspace,
+.activity-view--math .pyramid-info-panel {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.activity-view--math .pyramid-info-panel {
+  position: sticky;
+  top: var(--space-4);
+}
+
+.activity-view--math .pyramid-block {
+  border: 2px solid color-mix(in srgb, var(--block-shadow) 76%, var(--color-text));
+  color: var(--color-text);
+}
+
+.activity-view--math .pyramid-block.is-accepted {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 3px var(--color-success-soft);
+}
+
+.activity-view--math .pyramid-block.is-accepted::after {
+  content: "✓";
+  position: absolute;
+  top: 0.1rem;
+  right: 0.25rem;
+  color: var(--color-success);
+  font-weight: 900;
+}
+
+.activity-view--math .pyramid-block.is-error {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 18%, transparent);
+}
+
+.activity-view--math .pyramid-block.is-error::after {
+  content: "✕";
+  position: absolute;
+  top: 0.1rem;
+  right: 0.25rem;
+  color: var(--color-danger);
+  font-weight: 900;
+}
+
+.activity-view--math .pyramid-block input {
+  min-width: 0;
+  min-height: var(--touch-target);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-view--math .pyramid-score-grid {
+  opacity: 0.88;
+}
+
+@media (max-width: 61.25rem) {
+  .activity-view--math .pyramid-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-view--math .pyramid-info-panel {
+    position: static;
   }
 }

@@ -1,8 +1,7 @@
-import GuiaLenguajeActivity from './GuiaLenguajeActivity'
 import { GUIA_LENGUAJE_ASSETS } from './data/assets'
-import type { ActivityModule } from '../../types'
+import { defineActivity } from '../defineActivity'
 
-export const guiaLenguajeModule: ActivityModule = {
+export const guiaLenguajeModule = defineActivity({
   activity: {
     id: 'guia-lenguaje',
     title: 'Guía de Lenguaje',
@@ -14,5 +13,5 @@ export const guiaLenguajeModule: ActivityModule = {
     migrationStatus: 'mvp',
   },
   assets: ['/', ...GUIA_LENGUAJE_ASSETS],
-  Component: GuiaLenguajeActivity,
-}
+  load: () => import('./GuiaLenguajeActivity'),
+})

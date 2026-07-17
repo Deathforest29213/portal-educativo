@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { ActionButton } from '../../../app/components/ActionButton'
+import { FeedbackBanner } from '../../../app/components/FeedbackBanner'
 import { PyramidStack } from '../components/PyramidStack'
 import { TopBar } from '../components/TopBar'
 import type { Minihistory, QuestionFeedback } from '../types'
@@ -25,7 +27,12 @@ export function QuizScreen({
   const question = story.questions[quizIndex]
   const finalLine = story.lines[story.lines.length - 1]
   const summaryPanelRef = useRef<HTMLDivElement | null>(null)
+  const nextQuestionButtonRef = useRef<HTMLButtonElement | null>(null)
   const [questionPanelHeight, setQuestionPanelHeight] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (feedback) nextQuestionButtonRef.current?.focus()
+  }, [feedback])
 
   useEffect(() => {
     const summaryPanel = summaryPanelRef.current
@@ -103,6 +110,7 @@ export function QuizScreen({
 
               return (
                 <button
+                  aria-pressed={feedback?.selected === index}
                   key={`${story.id}-option-${index}`}
                   className={`option-button ${extraClass}`}
                   type="button"
@@ -116,9 +124,8 @@ export function QuizScreen({
           </div>
 
           {feedback ? (
-            <div className="feedback-box">
-              <strong>{feedback.isCorrect ? '¡Correcto!' : 'Casi'}</strong>
-              <div className="muted">{question.explanation}</div>
+            <FeedbackBanner className="feedback-box" title={feedback.isCorrect ? 'Respuesta correcta' : 'Revisa la respuesta'} tone={feedback.isCorrect ? 'success' : 'danger'}>
+              <p>{question.explanation}</p>
 
               {feedback.isCorrect ? (
                 <div className="burst" aria-hidden="true">
@@ -130,13 +137,13 @@ export function QuizScreen({
               ) : null}
 
               <div className="controls">
-                <button className="result-button" type="button" onClick={onNextQuestion}>
+                <ActionButton onClick={onNextQuestion} ref={nextQuestionButtonRef}>
                   {quizIndex < story.questions.length - 1
                     ? 'Siguiente pregunta'
                     : 'Terminar actividad'}
-                </button>
+                </ActionButton>
               </div>
-            </div>
+            </FeedbackBanner>
           ) : null}
         </div>
       </section>

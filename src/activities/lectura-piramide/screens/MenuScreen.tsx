@@ -32,11 +32,9 @@ export function MenuScreen({
             cambia contigo.
           </p>
 
-          <div className="version-badge">Versión {APP_VERSION}</div>
-
           {hasStories ? (
             <div className="menu-grid">
-              <button className="menu-option-card red" type="button" onClick={onStartRandom}>
+              <button className="menu-option-card red ui-card ui-card--interactive" type="button" onClick={onStartRandom}>
                 <div className="menu-icon-bubble red">
                   <span>🎲</span>
                 </div>
@@ -48,7 +46,7 @@ export function MenuScreen({
               </button>
 
               <button
-                className="menu-option-card yellow"
+                className="menu-option-card yellow ui-card ui-card--interactive"
                 type="button"
                 onClick={onOpenCollection}
               >
@@ -75,6 +73,7 @@ export function MenuScreen({
               preguntas.
             </p>
           ) : null}
+          <small className="version-badge">Versión {APP_VERSION}</small>
         </div>
       </div>
     </section>

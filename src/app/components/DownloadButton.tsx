@@ -1,5 +1,6 @@
-import { CheckCircle2, Download, LoaderCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Download, LoaderCircle, RefreshCw } from 'lucide-react'
 import type { DownloadRecord } from '../../types'
+import { ActionButton } from './ActionButton'
 
 type DownloadButtonProps = {
   download: DownloadRecord
@@ -7,28 +8,49 @@ type DownloadButtonProps = {
 }
 
 export function DownloadButton({ download, onDownload }: DownloadButtonProps) {
-  if (download.state === 'downloading') {
+  if (download.state === 'downloading' || download.state === 'updating') {
     return (
-      <button className="secondary-button" disabled type="button">
-        <LoaderCircle className="spin" size={17} />
-        Descargando
-      </button>
+      <ActionButton
+        busy
+        busyLabel={download.state === 'updating' ? 'Actualizando' : 'Descargando'}
+        icon={<LoaderCircle aria-hidden="true" className="spin" size={17} />}
+        variant="secondary"
+      />
     )
   }
 
   if (download.state === 'downloaded') {
+    const needsUpdate = download.downloadedVersion !== download.availableVersion
+
     return (
-      <button className="secondary-button is-downloaded" onClick={onDownload} type="button">
-        <CheckCircle2 size={17} />
-        Descargada
-      </button>
+      <ActionButton
+        className="is-downloaded"
+        icon={needsUpdate ? <RefreshCw aria-hidden="true" size={17} /> : <CheckCircle2 aria-hidden="true" size={17} />}
+        onClick={onDownload}
+        variant="secondary"
+      >
+        {needsUpdate ? 'Actualizar' : 'Descargada'}
+      </ActionButton>
+    )
+  }
+
+  if (download.state === 'error') {
+    return (
+      <ActionButton
+        aria-label={download.errorMessage ? `Reintentar descarga. ${download.errorMessage}` : 'Reintentar descarga'}
+        icon={<AlertCircle aria-hidden="true" size={17} />}
+        onClick={onDownload}
+        title={download.errorMessage ?? undefined}
+        variant="secondary"
+      >
+        Reintentar
+      </ActionButton>
     )
   }
 
   return (
-    <button className="secondary-button" onClick={onDownload} type="button">
-      <Download size={17} />
+    <ActionButton icon={<Download aria-hidden="true" size={17} />} onClick={onDownload} variant="secondary">
       Descargar
-    </button>
+    </ActionButton>
   )
 }

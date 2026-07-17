@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { ActionButton } from '../../app/components/ActionButton'
+import { FeedbackBanner } from '../../app/components/FeedbackBanner'
+import { ProgressBadge } from '../../app/components/ProgressBadge'
+import { browserRandom } from '../../platform/random/RandomSource'
 import {
   menuOptions,
   task1Parts,
@@ -10,27 +14,20 @@ import {
   type TaskKey,
 } from './data/content'
 import { playFeedbackSound } from './utils/audio'
-
-type Stage = 'menu' | 'task1' | 'task2' | 'task3' | 'results'
-type Feedback = boolean | null
-
-type TaskResult = {
-  answer: string
-  correct: boolean
-  id: string
-  label: string
-  maxPoints: number
-  points: number
-  selected: string
-}
-
-type ResultsState = Record<TaskKey, TaskResult[]>
-type FragmentSelection = { id: string; text: string }
-
-const emptyResults: ResultsState = { task1: [], task2: [], task3: [] }
+import {
+  createGuideState,
+  getResultTaskKeys,
+  guideReducer,
+  type FragmentSelection,
+  type GuideFeedback as Feedback,
+  type GuideSelection,
+  type GuideStage as Stage,
+  type ResultsState,
+  type TaskResult,
+} from './domain/guideState'
 
 function shuffleArray<T>(items: T[]) {
-  return [...items].sort(() => Math.random() - 0.5)
+  return browserRandom.shuffle(items)
 }
 
 function getTotals(results: ResultsState) {
@@ -40,58 +37,62 @@ function getTotals(results: ResultsState) {
 }
 
 export default function GuiaLenguajeActivity() {
-  const [stage, setStage] = useState<Stage>('menu')
-  const [sequence, setSequence] = useState<TaskKey[]>([])
-  const [results, setResults] = useState<ResultsState>(emptyResults)
-  const [task1Mode, setTask1Mode] = useState<'reading' | 'quiz'>('reading')
-  const [task1Part, setTask1Part] = useState(0)
-  const [task1Question, setTask1Question] = useState(0)
-  const [task1Selected, setTask1Selected] = useState('')
-  const [task1Feedback, setTask1Feedback] = useState<Feedback>(null)
-  const [task2Question, setTask2Question] = useState(0)
-  const [task2Selected, setTask2Selected] = useState<FragmentSelection[]>([])
-  const [task2Feedback, setTask2Feedback] = useState<Feedback>(null)
-  const [task2Choices, setTask2Choices] = useState(() => task2Prompts.map((prompt) => shuffleArray(prompt.fragments)))
-  const [task3Question, setTask3Question] = useState(0)
-  const [task3Selected, setTask3Selected] = useState('')
-  const [task3Feedback, setTask3Feedback] = useState<Feedback>(null)
+  const [state, dispatch] = useReducer(
+    guideReducer,
+    undefined,
+    () => createGuideState(makeTask2Choices()),
+  )
+  const {
+    stage,
+    sequence,
+    selection,
+    results,
+    task1Mode,
+    task1Part,
+    task1Question,
+    task1Selected,
+    task1Feedback,
+    task2Question,
+    task2Selected,
+    task2Feedback,
+    task2Choices,
+    task3Question,
+    task3Selected,
+    task3Feedback,
+  } = state
   const totals = useMemo(() => getTotals(results), [results])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
-  }, [stage, task1Mode, task1Part, task1Question, task2Question, task3Question])
+  }, [stage, task1Mode])
 
-  function resetGuide(nextStage: Stage = 'menu', nextSequence: TaskKey[] = []) {
-    setStage(nextStage)
-    setSequence(nextSequence)
-    setResults({ task1: [], task2: [], task3: [] })
-    setTask1Mode('reading')
-    setTask1Part(0)
-    setTask1Question(0)
-    setTask1Selected('')
-    setTask1Feedback(null)
-    setTask2Question(0)
-    setTask2Selected([])
-    setTask2Feedback(null)
-    setTask2Choices(task2Prompts.map((prompt) => shuffleArray(prompt.fragments)))
-    setTask3Question(0)
-    setTask3Selected('')
-    setTask3Feedback(null)
+  function resetGuide(
+    nextStage: Stage = 'menu',
+    nextSequence: TaskKey[] = [],
+    nextSelection: GuideSelection = null,
+  ) {
+    dispatch({
+      type: 'RESET',
+      stage: nextStage,
+      sequence: nextSequence,
+      selection: nextSelection,
+      task2Choices: makeTask2Choices(),
+    })
   }
 
   function startGuide(selection: TaskKey | 'all') {
     const nextSequence: TaskKey[] = selection === 'all' ? ['task1', 'task2', 'task3'] : [selection]
-    resetGuide(nextSequence[0], nextSequence)
+    resetGuide(nextSequence[0], nextSequence, selection)
   }
 
   function registerResult(task: TaskKey, result: TaskResult) {
-    setResults((current) => ({ ...current, [task]: [...current[task], result] }))
+    dispatch({ type: 'REGISTER_RESULT', task, result })
   }
 
   function goNext(currentTask: TaskKey) {
     const index = sequence.indexOf(currentTask)
     const next = sequence[index + 1]
-    setStage(next ?? 'results')
+    dispatch({ type: 'SET_STAGE', stage: next ?? 'results' })
   }
 
   function goBackToGuideMenu() {
@@ -99,12 +100,7 @@ export default function GuiaLenguajeActivity() {
   }
 
   function goBackToTaskOneReading() {
-    setTask1Mode('reading')
-    setTask1Part(task1Parts.length - 1)
-    setTask1Question(0)
-    setTask1Selected('')
-    setTask1Feedback(null)
-    setResults((current) => ({ ...current, task1: [] }))
+    dispatch({ type: 'BACK_TO_TASK1_READING', lastPart: task1Parts.length - 1 })
   }
 
   const backButtonLabel = stage === 'task1' && task1Mode === 'quiz' ? '← Volver a la lectura' : '← Volver al menú'
@@ -122,7 +118,7 @@ export default function GuiaLenguajeActivity() {
         </div>
         <div className="guide-original-grid">
           {menuOptions.map((option) => (
-            <button className="guide-original-card" key={option.id} onClick={() => startGuide(option.id)} type="button">
+            <button className="guide-original-card ui-card ui-card--interactive" key={option.id} onClick={() => startGuide(option.id)} type="button">
               <span>{option.label}</span>
               <div className="guide-original-card-image">
                 <img alt="" src={option.image} />
@@ -132,9 +128,9 @@ export default function GuiaLenguajeActivity() {
             </button>
           ))}
         </div>
-        <button className="primary-button guide-start-button" onClick={() => startGuide('all')} type="button">
+        <ActionButton className="guide-start-button" onClick={() => startGuide('all')}>
           Hacer guía completa
-        </button>
+        </ActionButton>
       </section>
     )
   }
@@ -142,9 +138,9 @@ export default function GuiaLenguajeActivity() {
   return (
     <section className="guide-original guide-original-workspace">
       <div className="activity-back-row">
-        <button className="activity-back-pill" onClick={backButtonAction} type="button">
+        <ActionButton onClick={backButtonAction} variant="quiet">
           {backButtonLabel}
-        </button>
+        </ActionButton>
       </div>
       <GuideTopBar stage={stage} totals={totals} showScore={stage === 'task2' && totals.total > 0} />
       {stage === 'task1' ? (
@@ -155,11 +151,11 @@ export default function GuiaLenguajeActivity() {
           questionIndex={task1Question}
           registerResult={registerResult}
           selected={task1Selected}
-          setFeedback={setTask1Feedback}
-          setMode={setTask1Mode}
-          setPartIndex={setTask1Part}
-          setQuestionIndex={setTask1Question}
-          setSelected={setTask1Selected}
+          setFeedback={(feedback) => dispatch({ type: 'SET_TASK1_FEEDBACK', feedback })}
+          setMode={(mode) => dispatch({ type: 'SET_TASK1_MODE', mode })}
+          setPartIndex={(index) => dispatch({ type: 'SET_TASK1_PART', index })}
+          setQuestionIndex={(index) => dispatch({ type: 'SET_TASK1_QUESTION', index })}
+          setSelected={(selected) => dispatch({ type: 'SET_TASK1_SELECTED', selected })}
           totals={totals}
           onDone={() => goNext('task1')}
         />
@@ -171,9 +167,9 @@ export default function GuiaLenguajeActivity() {
           questionIndex={task2Question}
           registerResult={registerResult}
           selected={task2Selected}
-          setFeedback={setTask2Feedback}
-          setQuestionIndex={setTask2Question}
-          setSelected={setTask2Selected}
+          setFeedback={(feedback) => dispatch({ type: 'SET_TASK2_FEEDBACK', feedback })}
+          setQuestionIndex={(index) => dispatch({ type: 'SET_TASK2_QUESTION', index })}
+          setSelected={(selected) => dispatch({ type: 'SET_TASK2_SELECTED', selected })}
           onDone={() => goNext('task2')}
         />
       ) : null}
@@ -183,16 +179,22 @@ export default function GuiaLenguajeActivity() {
           questionIndex={task3Question}
           registerResult={registerResult}
           selected={task3Selected}
-          setFeedback={setTask3Feedback}
-          setQuestionIndex={setTask3Question}
-          setSelected={setTask3Selected}
+          setFeedback={(feedback) => dispatch({ type: 'SET_TASK3_FEEDBACK', feedback })}
+          setQuestionIndex={(index) => dispatch({ type: 'SET_TASK3_QUESTION', index })}
+          setSelected={(selected) => dispatch({ type: 'SET_TASK3_SELECTED', selected })}
           totals={totals}
           onDone={() => goNext('task3')}
         />
       ) : null}
-      {stage === 'results' ? <ResultsScreen results={results} resetGuide={() => resetGuide()} /> : null}
+      {stage === 'results' ? (
+        <ResultsScreen results={results} resetGuide={() => resetGuide()} selection={selection} />
+      ) : null}
     </section>
   )
+}
+
+function makeTask2Choices() {
+  return task2Prompts.map((prompt) => shuffleArray(prompt.fragments))
 }
 
 function GuideTopBar({
@@ -219,10 +221,7 @@ function GuideTopBar({
         <h2>{titles[stage]}</h2>
       </div>
       {showScore ? (
-        <div className="guide-original-score">
-          <span>Aciertos</span>
-          <strong>{totals.correct}/{totals.total}</strong>
-        </div>
+        <ProgressBadge current={totals.correct} label="Aciertos" showBar={false} total={totals.total} />
       ) : null}
     </header>
   )
@@ -256,16 +255,14 @@ function TaskOne(props: {
           {part.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
           <div className="guide-reading-actions">
             <PartDots active={props.partIndex} total={task1Parts.length} />
-            <button
-              className="primary-button"
+            <ActionButton
               onClick={() => {
                 if (props.partIndex < task1Parts.length - 1) props.setPartIndex(props.partIndex + 1)
                 else props.setMode('quiz')
               }}
-              type="button"
             >
               {props.partIndex < task1Parts.length - 1 ? 'Siguiente parte' : 'Responder'}
-            </button>
+            </ActionButton>
           </div>
         </article>
       </section>
@@ -295,7 +292,8 @@ function TaskOne(props: {
     <QuestionLayout
       badge="Tarea 1"
       feedback={props.feedback}
-      image={task1Parts[Math.min(props.questionIndex, task1Parts.length - 1)].image}
+      image={question.image}
+      imageAlt={question.imageAlt}
       onNext={() => {
         if (props.questionIndex < task1Questions.length - 1) {
           props.setQuestionIndex(props.questionIndex + 1)
@@ -393,8 +391,7 @@ function TaskTwo(props: {
           <FeedbackBar correct={props.feedback} />
           <div className="guide-fragment-actions">
             {props.feedback === null ? (
-              <button
-                className="primary-button"
+              <ActionButton
                 disabled={props.selected.length === 0}
                 onClick={() => {
                   const correct = selectedText.join('|') === prompt.answer.join('|')
@@ -410,13 +407,11 @@ function TaskTwo(props: {
                   })
                   props.setFeedback(correct)
                 }}
-                type="button"
               >
-                Confirmar
-              </button>
+                Revisar respuesta
+              </ActionButton>
             ) : (
-              <button
-                className="primary-button"
+              <ActionButton
                 onClick={() => {
                   if (props.questionIndex < task2Prompts.length - 1) {
                     props.setQuestionIndex(props.questionIndex + 1)
@@ -426,10 +421,9 @@ function TaskTwo(props: {
                     props.onDone()
                   }
                 }}
-                type="button"
               >
                 Continuar
-              </button>
+              </ActionButton>
             )}
           </div>
         </div>
@@ -493,6 +487,7 @@ function TaskThree(props: {
           const showWrong = props.feedback === false && props.selected === option.text && option.text !== question.answer
           return (
             <button
+              aria-pressed={props.selected === option.text}
               className={`${props.selected === option.text ? 'is-selected' : ''} ${showCorrect ? 'is-correct' : ''} ${showWrong ? 'is-wrong' : ''}`}
               disabled={props.feedback !== null}
               key={option.text}
@@ -514,6 +509,7 @@ function QuestionLayout(props: {
   children: React.ReactNode
   feedback: Feedback
   image?: string
+  imageAlt?: string
   nextLabel: string
   onNext: () => void
   progress: string
@@ -521,11 +517,17 @@ function QuestionLayout(props: {
   title: string
   totals: { correct: number; total: number }
 }) {
+  const nextQuestionButtonRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    if (props.feedback !== null) nextQuestionButtonRef.current?.focus()
+  }, [props.feedback])
+
   return (
     <section className={`guide-question-layout ${props.image ? '' : 'is-text-only'} ${props.feedback === false ? 'is-wrong' : props.feedback === true ? 'is-correct' : ''}`}>
       {props.image ? (
         <aside className="guide-question-image">
-          <img alt="" src={props.image} />
+          <img alt={props.imageAlt ?? ''} src={props.image} />
         </aside>
       ) : null}
       <article className="guide-question-body">
@@ -539,14 +541,20 @@ function QuestionLayout(props: {
         <h3>{props.title}</h3>
         <p className="guide-question-help">Elige la alternativa correcta.</p>
         {props.children}
-        <FeedbackBar correct={props.feedback} />
-        {props.feedback !== null ? (
-          <div className="guide-question-actions">
-            <button className="primary-button" onClick={props.onNext} type="button">
-              {props.nextLabel}
-            </button>
-          </div>
-        ) : null}
+        <div className="guide-question-response" aria-live="polite">
+          {props.feedback !== null ? (
+            <>
+              <FeedbackBar correct={props.feedback} />
+              <div className="guide-question-actions">
+                <ActionButton onClick={props.onNext} ref={nextQuestionButtonRef}>
+                  {props.nextLabel}
+                </ActionButton>
+              </div>
+            </>
+          ) : (
+            <p className="guide-question-response-placeholder">Selecciona una alternativa para continuar.</p>
+          )}
+        </div>
       </article>
     </section>
   )
@@ -566,6 +574,7 @@ function OptionList(props: {
         const showWrong = props.feedback === false && props.selected === option && option !== props.answer
         return (
           <button
+            aria-pressed={props.selected === option}
             className={`guide-option-button ${props.selected === option ? 'is-selected' : ''} ${showCorrect ? 'is-correct' : ''} ${showWrong ? 'is-wrong' : ''}`}
             disabled={props.feedback !== null}
             key={option}
@@ -591,9 +600,9 @@ function TaskHeader({ label, skill }: { label: string; skill?: string }) {
 
 function PartDots({ active, total }: { active: number; total: number }) {
   return (
-    <div className="guide-part-dots">
+    <div aria-label={`Parte ${active + 1} de ${total}`} className="guide-part-dots" role="status">
       {Array.from({ length: total }, (_, index) => (
-        <span className={index === active ? 'is-active' : ''} key={index} />
+        <span aria-hidden="true" className={index === active ? 'is-active' : ''} key={index} />
       ))}
     </div>
   )
@@ -602,35 +611,56 @@ function PartDots({ active, total }: { active: number; total: number }) {
 function FeedbackBar({ correct }: { correct: Feedback }) {
   if (correct === null) return null
   return (
-    <div className={`guide-feedback ${correct ? 'is-correct' : 'is-wrong'}`}>
-      {correct ? 'Muy bien, respuesta correcta.' : 'Revisa la respuesta correcta y continúa.'}
-    </div>
+    <FeedbackBanner className="guide-feedback-banner" title={correct ? 'Respuesta correcta' : 'Revisa la respuesta'} tone={correct ? 'success' : 'danger'}>
+      {correct ? 'Muy bien. Puedes continuar.' : 'Observa la alternativa correcta antes de continuar.'}
+    </FeedbackBanner>
   )
 }
 
-function ResultsScreen({ results, resetGuide }: { results: ResultsState; resetGuide: () => void }) {
-  const totals = getTotals(results)
+function ResultsScreen({
+  results,
+  resetGuide,
+  selection,
+}: {
+  results: ResultsState
+  resetGuide: () => void
+  selection: GuideSelection
+}) {
+  const visibleTaskKeys = getResultTaskKeys(selection)
+  const visibleOptions = menuOptions.filter((option) => visibleTaskKeys.includes(option.id))
+  const visibleResults = visibleTaskKeys.flatMap((task) => results[task])
+  const correct = visibleResults.filter((result) => result.correct).length
+  const selectedOption = selection !== 'all' ? visibleOptions[0] : null
+  const isCompleteGuide = selection === 'all'
+
   return (
-    <section className="guide-results">
-      <span className="task-badge">Resultados</span>
-      <h2>Guía terminada</h2>
-      <p>Aciertos: {totals.correct} de {totals.total}</p>
+    <section className={`guide-results ${isCompleteGuide ? 'guide-results--complete' : 'guide-results--single'}`}>
+      <span className="task-badge">{isCompleteGuide ? 'Resultados globales' : 'Resultado de la actividad'}</span>
+      <h2>{isCompleteGuide ? 'Guía terminada' : `${selectedOption?.title ?? 'Actividad'} terminada`}</h2>
+      <p>
+        {isCompleteGuide ? 'Completaste la guía' : 'Completaste esta actividad'} con {correct} respuestas correctas de {visibleResults.length}.
+      </p>
+      <p>
+        {isCompleteGuide
+          ? 'Revisa cada parte para decidir qué conviene practicar nuevamente.'
+          : 'Este resumen corresponde solo a la actividad que seleccionaste.'}
+      </p>
       <div className="guide-results-grid">
-        {menuOptions.map((option) => {
+        {visibleOptions.map((option) => {
           const taskResults = results[option.id]
           const correct = taskResults.filter((result) => result.correct).length
           return (
             <article key={option.id}>
               <img alt="" src={option.image} />
               <strong>{option.label}</strong>
-              <span>{correct}/{taskResults.length}</span>
+              <span>{correct} correctas de {taskResults.length}</span>
             </article>
           )
         })}
       </div>
-      <button className="primary-button" onClick={resetGuide} type="button">
+      <ActionButton onClick={resetGuide}>
         Volver al menú
-      </button>
+      </ActionButton>
     </section>
   )
 }

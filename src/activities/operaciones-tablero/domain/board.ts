@@ -1,4 +1,5 @@
 import { PLAYER_PRESETS } from '../data/config'
+import { browserRandom, type RandomSource } from '../../../platform/random/RandomSource'
 import type { ClaimedCell, Difficulty, Operation, Player, PlayerPreset, Roll, Shape } from '../types'
 
 export function makePlayers(count: number, presets: PlayerPreset[] = PLAYER_PRESETS): Player[] {
@@ -47,7 +48,11 @@ function isValidProblem(row: number, col: number, operation: Operation) {
   return true
 }
 
-export function makeRoll(difficulty: Difficulty, claimed: Record<string, ClaimedCell>): Roll | null {
+export function makeRoll(
+  difficulty: Difficulty,
+  claimed: Record<string, ClaimedCell>,
+  random: RandomSource = browserRandom,
+): Roll | null {
   const candidates: Roll[] = []
 
   for (const operation of difficulty.operations) {
@@ -66,7 +71,7 @@ export function makeRoll(difficulty: Difficulty, claimed: Record<string, Claimed
     return null
   }
 
-  return candidates[Math.floor(Math.random() * candidates.length)]
+  return random.pick(candidates)
 }
 
 export function getLineBonuses(

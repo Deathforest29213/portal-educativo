@@ -1,6 +1,10 @@
-import { AlertTriangle, ArrowLeft } from 'lucide-react'
+import { X } from 'lucide-react'
+import { Suspense } from 'react'
 import type { ActivityModule, DownloadRecord } from '../types'
+import { ActionButton } from './components/ActionButton'
+import { ActivityLoadingScreen } from './components/ActivityLoadingScreen'
 import { DownloadButton } from './components/DownloadButton'
+import { FeedbackBanner } from './components/FeedbackBanner'
 
 type ActivityHostProps = {
   activityModule: ActivityModule
@@ -23,33 +27,35 @@ export function ActivityHost({
   const activityClass = activity.id.replace(/[^a-z0-9-]/gi, '-')
 
   return (
-    <main className={`app-shell activity-view activity-view--${areaClass} activity-view--${activityClass}`}>
+    <main className={`app-shell activity-view family-${areaClass} activity-view--${areaClass} activity-view--${activityClass}`}>
       <header className="activity-header">
         <div className="activity-title-block">
+          <span className="activity-area-label">{activity.area}</span>
           <h1>{activity.title}</h1>
         </div>
         <div className="activity-header-actions">
-          <span className="activity-area-label">{activity.area}</span>
           <DownloadButton download={download} onDownload={onDownload} />
-          <button className="back-button" onClick={onBack} type="button">
-            <ArrowLeft size={19} />
-            Inicio
-          </button>
+          <ActionButton
+            aria-label="Cerrar actividad"
+            className="activity-header__close"
+            icon={<X aria-hidden="true" size={22} strokeWidth={2.6} />}
+            onClick={onBack}
+            title="Cerrar actividad y volver al portal"
+            variant="danger"
+          />
         </div>
       </header>
 
       {!canUseOffline ? (
-        <section className="activity-panel">
-          <AlertTriangle size={28} />
-          <h2>Actividad no descargada</h2>
-          <p>Conéctate o descarga esta actividad antes de usarla sin internet.</p>
-        </section>
-      ) : activity.id === 'lectura-piramide' ? (
-        <section className="activity-stage activity-stage--lectura">
-          <Component />
-        </section>
+        <FeedbackBanner className="activity-panel" title="Actividad no disponible sin internet" tone="warning">
+          <p>Conéctate y descárgala antes de volver a intentarlo.</p>
+        </FeedbackBanner>
       ) : (
-        <Component />
+        <Suspense fallback={<ActivityLoadingScreen area={activity.area} title={activity.title} />}>
+          <section className="activity-stage">
+            <Component />
+          </section>
+        </Suspense>
       )}
     </main>
   )

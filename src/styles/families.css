@@ -1,0 +1,37 @@
+.family-language,
+.activity-view--language,
+.activity-card--language {
+  --family-accent: var(--color-language);
+  --family-accent-strong: var(--color-language-strong);
+  --family-accent-soft: var(--color-language-soft);
+}
+
+.family-math,
+.activity-view--math,
+.activity-card--math {
+  --family-accent: var(--color-math);
+  --family-accent-strong: var(--color-math-strong);
+  --family-accent-soft: var(--color-math-soft);
+}
+
+.family-language,
+.family-math,
+.activity-view,
+.activity-card {
+  --activity-accent: var(--family-accent, var(--color-primary));
+  --activity-accent-soft: var(--family-accent-soft, var(--color-primary-soft));
+}
+
+.family-heading,
+.activity-area-label,
+.task-badge {
+  border-color: color-mix(in srgb, var(--family-accent, var(--color-primary)) 35%, var(--color-border));
+  background: var(--family-accent-soft, var(--color-primary-soft));
+  color: var(--family-accent-strong, var(--color-primary));
+}
+
+.family-language .reading-copy,
+.activity-view--language .reading-copy {
+  max-width: var(--reading-measure);
+  line-height: var(--line-height-reading);
+}

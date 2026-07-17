@@ -1,0 +1,86 @@
+:root {
+  color-scheme: light;
+
+  --color-page: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef2f7;
+  --color-surface-raised: #ffffff;
+  --color-text: #172033;
+  --color-text-muted: #566176;
+  --color-border: #cbd5e1;
+  --color-border-strong: #94a3b8;
+
+  --color-primary: #243b53;
+  --color-primary-hover: #162a3d;
+  --color-primary-soft: #e8eef5;
+  --color-highlight: #d9a514;
+  --color-highlight-soft: #fff7d6;
+
+  --color-language: #0f766e;
+  --color-language-strong: #115e59;
+  --color-language-soft: #e4f7f3;
+  --color-math: #a84b12;
+  --color-math-strong: #84390e;
+  --color-math-soft: #fff0e2;
+
+  --color-info: #1d4ed8;
+  --color-info-soft: #eaf0ff;
+  --color-success: #15803d;
+  --color-success-soft: #e9f8ee;
+  --color-warning: #9a5b00;
+  --color-warning-soft: #fff5d6;
+  --color-danger: #b42318;
+  --color-danger-soft: #fff0ee;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.375rem;
+  --font-size-2xl: clamp(1.65rem, 3vw, 2.25rem);
+  --font-size-display: clamp(2.25rem, 7vw, 4.25rem);
+  --line-height-tight: 1.12;
+  --line-height-body: 1.55;
+  --line-height-reading: 1.75;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --shadow-sm: 0 1px 2px rgb(23 32 51 / 0.08);
+  --shadow-md: 0 10px 28px rgb(23 32 51 / 0.10);
+  --shadow-lg: 0 20px 48px rgb(23 32 51 / 0.16);
+  --focus-ring: 0 0 0 3px rgb(29 78 216 / 0.28);
+
+  --content-wide: 74rem;
+  --content-activity: 105rem;
+  --reading-measure: 68ch;
+  --touch-target: 2.75rem;
+  --motion-fast: 140ms;
+  --motion-normal: 220ms;
+
+  /* Backward-compatible aliases while legacy selectors are consolidated. */
+  --school-graphite: var(--color-primary);
+  --school-graphite-hover: var(--color-primary-hover);
+  --school-graphite-soft: #334e68;
+  --school-yellow: var(--color-highlight);
+  --school-yellow-hover: #b98a09;
+  --school-yellow-soft: var(--color-highlight-soft);
+  --school-page: var(--color-page);
+  --school-ink: var(--color-text);
+  --school-muted: var(--color-text-muted);
+  --school-border: var(--color-border);
+  --school-surface: var(--color-surface);
+}
