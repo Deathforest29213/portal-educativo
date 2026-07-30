@@ -1,4 +1,4 @@
-export type DifficultyKey = 'easy' | 'medium' | 'hard' | 'expert'
+export type DifficultyKey = 'easy' | 'medium' | 'hard' | 'expert' | 'custom'
 export type Operation = '+' | '-' | 'x' | '/'
 export type Shape = 'circle' | 'star' | 'heart' | 'triangle' | 'diamond'
 
@@ -10,6 +10,11 @@ export type Difficulty = {
   operations: Operation[]
   rangeLabel: string
   tone: string
+}
+
+export type CustomDifficultySettings = {
+  maxNumber: number
+  operations: Operation[]
 }
 
 export type Player = {

@@ -4,7 +4,13 @@ import { ActionButton } from '../../app/components/ActionButton'
 import { ConfirmDialog } from '../../app/components/ConfirmDialog'
 import { FeedbackBanner } from '../../app/components/FeedbackBanner'
 import { browserRandom } from '../../platform/random/RandomSource'
-import { DIFFICULTIES, PLAYER_NICKNAMES, getDifficulty } from './data/config'
+import {
+  DIFFICULTIES,
+  MAX_CUSTOM_MAX_NUMBER,
+  MIN_CUSTOM_MAX_NUMBER,
+  PLAYER_NICKNAMES,
+  getDifficulty,
+} from './data/config'
 import { cellKey, makeRoll, shapeSymbol } from './domain/board'
 import { boardGameReducer, createBoardGameState } from './domain/gameState'
 import type { ClaimedCell, Operation, Player } from './types'
@@ -16,6 +22,8 @@ export default function OperacionesTableroActivity() {
   const {
     screen,
     difficultyKey,
+    customMaxNumber,
+    customOperations,
     playerCount,
     playerPresets,
     players,
@@ -30,13 +38,17 @@ export default function OperacionesTableroActivity() {
     showFinishConfirm,
   } = state
 
-  const difficulty = getDifficulty(difficultyKey)
+  const difficulty = getDifficulty(difficultyKey, {
+    maxNumber: customMaxNumber,
+    operations: customOperations,
+  })
   const numbers = useMemo(
     () => Array.from({ length: difficulty.maxNumber + 1 }, (_, index) => index),
     [difficulty.maxNumber],
   )
   const selectedPlayerPresets = playerPresets.slice(0, playerCount)
   const currentPlayer = players[currentPlayerIndex]
+  const customHasOperations = customOperations.length > 0
   const claimedCount = Object.keys(claimed).length
   const totalCells = numbers.length * numbers.length
   const isTurnFinished = !roll && feedback !== null
@@ -55,6 +67,7 @@ export default function OperacionesTableroActivity() {
     : `Turno de ${currentPlayer?.name ?? 'jugador'}, tira los dados.`
 
   function startGame() {
+    if (difficultyKey === 'custom' && !customHasOperations) return
     dispatch({ type: 'START_GAME' })
   }
 
@@ -132,6 +145,7 @@ export default function OperacionesTableroActivity() {
               <div className="board-choice-grid" role="radiogroup" aria-label="Dificultad">
                 {DIFFICULTIES.map((item) => {
                   const isSelected = item.key === difficultyKey
+                  const cardDifficulty = item.key === 'custom' && difficultyKey === 'custom' ? difficulty : item
 
                   return (
                     <button
@@ -144,19 +158,58 @@ export default function OperacionesTableroActivity() {
                       type="button"
                     >
                       <span className="board-operation-icons" aria-hidden="true">
-                        {item.operations.map((operation) => (
+                        {cardDifficulty.operations.map((operation) => (
                           <span className="board-operation-chip" key={operation}>
                             {getOperationSymbol(operation)}
                           </span>
                         ))}
                       </span>
                       <strong>{item.label}</strong>
-                      <span>{item.rangeLabel}</span>
-                      <small>{getOperationCountLabel(item.operations.length)}</small>
+                      <span>{cardDifficulty.rangeLabel}</span>
+                      <small>{getOperationCountLabel(cardDifficulty.operations.length)}</small>
                     </button>
                   )
                 })}
               </div>
+              {difficultyKey === 'custom' ? (
+                <div className="board-custom-settings" aria-label="Configuración personalizada">
+                  <label className="board-custom-range">
+                    <span>Rango de números</span>
+                    <div>
+                      <small>De 0 a</small>
+                      <input
+                        aria-label="Número máximo del rango personalizado"
+                        max={MAX_CUSTOM_MAX_NUMBER}
+                        min={MIN_CUSTOM_MAX_NUMBER}
+                        onChange={(event) => dispatch({ type: 'SET_CUSTOM_MAX_NUMBER', maxNumber: Number(event.target.value) })}
+                        type="number"
+                        value={customMaxNumber}
+                      />
+                    </div>
+                  </label>
+                  <fieldset className="board-custom-operations">
+                    <legend>Operaciones</legend>
+                    <div>
+                      {(['+', '-', 'x', '/'] as Operation[]).map((operation) => {
+                        const isActive = customOperations.includes(operation)
+
+                        return (
+                          <button
+                            aria-pressed={isActive}
+                            className={isActive ? 'is-active' : ''}
+                            key={operation}
+                            onClick={() => dispatch({ type: 'TOGGLE_CUSTOM_OPERATION', operation })}
+                            type="button"
+                          >
+                            {getOperationSymbol(operation)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {!customHasOperations ? <small className="board-custom-warning">Elige al menos una operación.</small> : null}
+                  </fieldset>
+                </div>
+              ) : null}
             </article>
 
             <article className="board-setup-section board-participants-section">
@@ -210,7 +263,7 @@ export default function OperacionesTableroActivity() {
             </article>
           </div>
 
-          <ActionButton className="board-start-button" onClick={startGame}>
+          <ActionButton className="board-start-button" disabled={difficultyKey === 'custom' && !customHasOperations} onClick={startGame}>
             Comenzar juego
           </ActionButton>
         </div>
@@ -292,7 +345,7 @@ export default function OperacionesTableroActivity() {
 
               <div className="board-step-card board-dice-panel">
                 <div className="board-step-heading">
-                  <span className="board-step-number">1</span>
+                  <TurnPlayerMarker player={currentPlayer} />
                   <strong>Tirar dados</strong>
                 </div>
                 <div className="board-dice-row" aria-live="polite">
@@ -313,7 +366,7 @@ export default function OperacionesTableroActivity() {
 
               <div className={`board-step-card board-problem-card ${feedback ? `is-${feedback}` : ''}`}>
                 <div className="board-step-heading">
-                  <span className="board-step-number">2</span>
+                  <TurnPlayerMarker player={currentPlayer} />
                   <strong>Resolver</strong>
                 </div>
                 <strong className={!roll ? 'board-turn-instruction' : undefined}>{resolverText}</strong>
@@ -339,12 +392,17 @@ export default function OperacionesTableroActivity() {
                       inputMode="numeric"
                       onChange={(event) => dispatch({ type: 'ANSWER_CHANGED', answer: event.target.value })}
                       onKeyDown={(event) => {
+                        if (event.key === '-') {
+                          event.preventDefault()
+                          return
+                        }
                         if (event.key === 'Enter') {
                           submitAnswer()
                         }
                       }}
+                      pattern="[0-9]*"
                       placeholder="Respuesta"
-                      type="number"
+                      type="text"
                       value={answer}
                     />
                     <ActionButton disabled={isRolling || answer.trim() === ''} onClick={submitAnswer} variant="secondary">
@@ -441,6 +499,20 @@ function DiceValue({ label, value }: { label: string; value: number | string }) 
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  )
+}
+
+function TurnPlayerMarker({ player }: { player: Player | undefined }) {
+  if (!player) return null
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`board-marker board-turn-marker board-marker--${player.shape}`}
+      style={{ '--player-color': player.color } as CSSProperties}
+    >
+      {shapeSymbol(player.shape)}
+    </span>
   )
 }
 

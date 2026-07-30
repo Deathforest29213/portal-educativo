@@ -2171,6 +2171,14 @@ h1 {
   --board-corner-color: #ffffff;
 }
 
+.board-game--custom {
+  --board-axis-bg: #2e1e52;
+  --board-cell-bg: #faf7ff;
+  --board-cell-border: #e2d7f5;
+  --board-corner-bg: #7e57c2;
+  --board-corner-color: #ffffff;
+}
+
 .board-game-setup {
   align-items: start;
   min-height: 72vh;
@@ -2293,7 +2301,7 @@ h1 {
 .board-choice-grid {
   align-items: start;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -2374,6 +2382,100 @@ h1 {
 
 .board-choice-grid small {
   font-size: 0.78rem;
+}
+
+.board-custom-settings {
+  align-items: start;
+  border-top: 1px solid var(--board-line);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1.3fr);
+  padding-top: 14px;
+}
+
+.board-custom-range,
+.board-custom-operations {
+  color: var(--board-ink);
+  font-weight: 900;
+}
+
+.board-custom-range {
+  display: grid;
+  gap: 8px;
+}
+
+.board-custom-range > span,
+.board-custom-operations legend {
+  font-size: 0.88rem;
+  font-weight: 950;
+}
+
+.board-custom-range > div {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.board-custom-range small {
+  color: var(--board-muted);
+  font-size: 0.88rem;
+}
+
+.board-custom-range input {
+  border: 2px solid color-mix(in srgb, var(--board-tone) 28%, var(--board-line));
+  border-radius: 12px;
+  color: var(--board-ink);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 950;
+  min-height: 42px;
+  padding: 0 10px;
+  width: 82px;
+}
+
+.board-custom-operations {
+  border: 0;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.board-custom-operations > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.board-custom-operations button {
+  align-items: center;
+  background: #ffffff;
+  border: 2px solid var(--board-line);
+  border-radius: 12px;
+  color: var(--board-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 950;
+  height: 42px;
+  justify-content: center;
+  line-height: 1;
+  width: 48px;
+}
+
+.board-custom-operations button.is-active {
+  background: color-mix(in srgb, var(--board-tone) 13%, #ffffff);
+  border-color: var(--board-tone);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--board-tone) 18%, transparent);
+  color: var(--board-tone);
+}
+
+.board-custom-warning {
+  color: #b3261e;
+  font-size: 0.78rem;
+  font-weight: 850;
 }
 
 .board-player-count {
@@ -2794,6 +2896,13 @@ h1 {
   justify-content: center;
   line-height: 1;
   width: 26px;
+}
+
+.board-turn-marker {
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--player-color) 28%, transparent);
+  height: 28px;
+  width: 28px;
+  font-size: 0.95rem;
 }
 
 .board-dice-row {
@@ -3832,6 +3941,10 @@ h1 {
 
   .board-choice-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .board-custom-settings {
+    grid-template-columns: 1fr;
   }
 
   .board-turn-panel {

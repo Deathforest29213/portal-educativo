@@ -1,6 +1,12 @@
-import { PLAYER_PRESETS, getDifficulty } from '../data/config'
+import {
+  CUSTOM_DIFFICULTY_DEFAULTS,
+  MAX_CUSTOM_MAX_NUMBER,
+  MIN_CUSTOM_MAX_NUMBER,
+  PLAYER_PRESETS,
+  getDifficulty,
+} from '../data/config'
 import { cellKey, getLineBonuses, makePlayers } from './board'
-import type { ClaimedCell, DifficultyKey, Player, PlayerPreset, Roll } from '../types'
+import type { ClaimedCell, DifficultyKey, Operation, Player, PlayerPreset, Roll } from '../types'
 
 export type BoardScreen = 'setup' | 'playing' | 'finished'
 export type BoardFeedback = 'correct' | 'wrong' | null
@@ -8,6 +14,8 @@ export type BoardFeedback = 'correct' | 'wrong' | null
 export type BoardGameState = {
   screen: BoardScreen
   difficultyKey: DifficultyKey
+  customMaxNumber: number
+  customOperations: Operation[]
   playerCount: number
   playerPresets: PlayerPreset[]
   players: Player[]
@@ -25,6 +33,8 @@ export type BoardGameState = {
 
 export type BoardCommand =
   | { type: 'SELECT_DIFFICULTY'; difficultyKey: DifficultyKey }
+  | { type: 'SET_CUSTOM_MAX_NUMBER'; maxNumber: number }
+  | { type: 'TOGGLE_CUSTOM_OPERATION'; operation: Operation }
   | { type: 'SET_PLAYER_COUNT'; count: number }
   | { type: 'SET_PLAYER_NAME'; playerIndex: number; name: string }
   | { type: 'START_GAME' }
@@ -41,6 +51,8 @@ export function createBoardGameState(): BoardGameState {
   return {
     screen: 'setup',
     difficultyKey: 'easy',
+    customMaxNumber: CUSTOM_DIFFICULTY_DEFAULTS.maxNumber,
+    customOperations: CUSTOM_DIFFICULTY_DEFAULTS.operations,
     playerCount: 3,
     playerPresets: PLAYER_PRESETS,
     players: [],
@@ -61,6 +73,28 @@ export function boardGameReducer(state: BoardGameState, command: BoardCommand): 
   switch (command.type) {
     case 'SELECT_DIFFICULTY':
       return { ...state, difficultyKey: command.difficultyKey }
+    case 'SET_CUSTOM_MAX_NUMBER':
+      return {
+        ...state,
+        customMaxNumber: Math.max(
+          MIN_CUSTOM_MAX_NUMBER,
+          Math.min(
+            MAX_CUSTOM_MAX_NUMBER,
+            Math.trunc(
+              Number.isFinite(command.maxNumber)
+                ? command.maxNumber
+                : CUSTOM_DIFFICULTY_DEFAULTS.maxNumber,
+            ),
+          ),
+        ),
+      }
+    case 'TOGGLE_CUSTOM_OPERATION':
+      return {
+        ...state,
+        customOperations: state.customOperations.includes(command.operation)
+          ? state.customOperations.filter((operation) => operation !== command.operation)
+          : [...state.customOperations, command.operation],
+      }
     case 'SET_PLAYER_COUNT':
       return { ...state, playerCount: command.count }
     case 'SET_PLAYER_NAME':
@@ -85,7 +119,7 @@ export function boardGameReducer(state: BoardGameState, command: BoardCommand): 
     case 'ROLL_ANIMATION_FINISHED':
       return { ...state, isRolling: false }
     case 'ANSWER_CHANGED':
-      return { ...state, answer: command.answer }
+      return /^\d*$/.test(command.answer) ? { ...state, answer: command.answer } : state
     case 'SUBMIT_ANSWER':
       return submitAnswer(state)
     default:
@@ -97,12 +131,18 @@ function returnToSetup(state: BoardGameState): BoardGameState {
   return {
     ...createBoardGameState(),
     difficultyKey: state.difficultyKey,
+    customMaxNumber: state.customMaxNumber,
+    customOperations: state.customOperations,
     playerCount: state.playerCount,
     playerPresets: state.playerPresets,
   }
 }
 
 function startGame(state: BoardGameState): BoardGameState {
+  if (state.difficultyKey === 'custom' && state.customOperations.length === 0) {
+    return state
+  }
+
   const players = makePlayers(state.playerCount, state.playerPresets.slice(0, state.playerCount))
 
   return {
@@ -170,7 +210,10 @@ function submitAnswer(state: BoardGameState): BoardGameState {
     }
   }
 
-  const difficulty = getDifficulty(state.difficultyKey)
+  const difficulty = getDifficulty(state.difficultyKey, {
+    maxNumber: state.customMaxNumber,
+    operations: state.customOperations,
+  })
   const nextClaimed = {
     ...state.claimed,
     [cellKey(roll.row, roll.col)]: {

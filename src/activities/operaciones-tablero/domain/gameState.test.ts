@@ -57,4 +57,35 @@ describe('boardGameReducer', () => {
     expect(state.difficultyKey).toBe('expert')
     expect(state.playerCount).toBe(4)
   })
+
+  it('conserva la configuración personalizada y exige al menos una operación', () => {
+    let state = boardGameReducer(createBoardGameState(), {
+      type: 'SELECT_DIFFICULTY',
+      difficultyKey: 'custom',
+    })
+    state = boardGameReducer(state, { type: 'TOGGLE_CUSTOM_OPERATION', operation: '+' })
+    state = boardGameReducer(state, { type: 'START_GAME' })
+    expect(state.screen).toBe('setup')
+
+    state = boardGameReducer(state, { type: 'TOGGLE_CUSTOM_OPERATION', operation: '-' })
+    state = boardGameReducer(state, { type: 'SET_CUSTOM_MAX_NUMBER', maxNumber: 99 })
+    expect(state.customMaxNumber).toBe(9)
+    state = boardGameReducer(state, { type: 'SET_CUSTOM_MAX_NUMBER', maxNumber: 8 })
+    state = boardGameReducer(state, { type: 'START_GAME' })
+    expect(state.screen).toBe('playing')
+
+    state = boardGameReducer(state, { type: 'RESET_GAME' })
+    expect(state.difficultyKey).toBe('custom')
+    expect(state.customMaxNumber).toBe(8)
+    expect(state.customOperations).toEqual(['-'])
+  })
+
+  it('rechaza respuestas que no sean enteros no negativos', () => {
+    let state = boardGameReducer(createBoardGameState(), { type: 'START_GAME' })
+    state = boardGameReducer(state, { type: 'ROLL_REQUESTED', roll })
+    state = boardGameReducer(state, { type: 'ROLL_ANIMATION_FINISHED' })
+    state = boardGameReducer(state, { type: 'ANSWER_CHANGED', answer: '-3' })
+
+    expect(state.answer).toBe('')
+  })
 })
