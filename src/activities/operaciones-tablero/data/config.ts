@@ -1,4 +1,12 @@
-import type { Difficulty, DifficultyKey, PlayerPreset } from '../types'
+import type { CustomDifficultySettings, Difficulty, DifficultyKey, PlayerPreset } from '../types'
+
+export const MIN_CUSTOM_MAX_NUMBER = 1
+export const MAX_CUSTOM_MAX_NUMBER = 9
+
+export const CUSTOM_DIFFICULTY_DEFAULTS: CustomDifficultySettings = {
+  maxNumber: 5,
+  operations: ['+'],
+}
 
 export const DIFFICULTIES: Difficulty[] = [
   {
@@ -37,6 +45,14 @@ export const DIFFICULTIES: Difficulty[] = [
     rangeLabel: 'Números de 0 a 9',
     tone: '#ea4335',
   },
+  {
+    key: 'custom',
+    label: 'Personalizado',
+    description: 'Elige el rango y las operaciones para esta partida.',
+    ...CUSTOM_DIFFICULTY_DEFAULTS,
+    rangeLabel: 'Rango y operaciones a elección',
+    tone: '#7e57c2',
+  },
 ]
 
 export const PLAYER_PRESETS: PlayerPreset[] = [
@@ -70,6 +86,30 @@ export const PLAYER_NICKNAMES = [
   'Zorzal Campeón',
 ]
 
-export function getDifficulty(key: DifficultyKey) {
-  return DIFFICULTIES.find((difficulty) => difficulty.key === key) ?? DIFFICULTIES[0]
+export function getDifficulty(
+  key: DifficultyKey,
+  customSettings: CustomDifficultySettings = CUSTOM_DIFFICULTY_DEFAULTS,
+): Difficulty {
+  const requestedMaxNumber = Number.isFinite(customSettings.maxNumber)
+    ? customSettings.maxNumber
+    : CUSTOM_DIFFICULTY_DEFAULTS.maxNumber
+
+  if (key !== 'custom') {
+    return DIFFICULTIES.find((difficulty) => difficulty.key === key) ?? DIFFICULTIES[0]
+  }
+
+  const maxNumber = Math.max(
+    MIN_CUSTOM_MAX_NUMBER,
+    Math.min(MAX_CUSTOM_MAX_NUMBER, Math.trunc(requestedMaxNumber)),
+  )
+
+  return {
+    key: 'custom',
+    label: 'Personalizado',
+    description: 'Elige el rango y las operaciones para esta partida.',
+    maxNumber,
+    operations: customSettings.operations,
+    rangeLabel: `Números de 0 a ${maxNumber}`,
+    tone: '#7e57c2',
+  }
 }
