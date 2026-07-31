@@ -1,6 +1,7 @@
 import { Delete } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ActionButton } from '../../app/components/ActionButton'
+import { ConfirmDialog } from '../../app/components/ConfirmDialog'
 import { ProgressBadge } from '../../app/components/ProgressBadge'
 import { difficulties, difficultyKeys } from './data/difficulties'
 import { generateProblem, makeStartNumber } from './domain/problems'
@@ -39,6 +40,7 @@ export default function SerpienteMatematicaActivity() {
   const [feedback, setFeedback] = useState<Feedback>(null)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [exerciseIndex, setExerciseIndex] = useState(0)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
 
   function startGame() {
     const settings = difficulties[difficultyKey]
@@ -53,12 +55,17 @@ export default function SerpienteMatematicaActivity() {
   }
 
   function returnToLevels() {
+    setShowExitConfirm(false)
     setScreen('menu')
     setSnakeSegments([])
     setCurrentProblem(null)
     setFeedback(null)
     setSelectedAnswer(null)
     setExerciseIndex(0)
+  }
+
+  function requestExit() {
+    setShowExitConfirm(true)
   }
 
   function handleAnswer(value: number) {
@@ -126,7 +133,7 @@ export default function SerpienteMatematicaActivity() {
           exerciseIndex={exerciseIndex}
           feedback={feedback}
           onAnswer={handleAnswer}
-          onExit={returnToLevels}
+          onExit={requestExit}
           problem={currentProblem}
           selectedAnswer={selectedAnswer}
           snake={snakeSegments}
@@ -135,6 +142,15 @@ export default function SerpienteMatematicaActivity() {
       {screen === 'summary' ? (
         <SnakeSummary difficulty={activeDifficulty} onRestart={() => setScreen('menu')} snake={snakeSegments} />
       ) : null}
+      <ConfirmDialog
+        confirmLabel="Abandonar partida"
+        description="Se perderá el avance actual de esta partida."
+        onCancel={() => setShowExitConfirm(false)}
+        onConfirm={returnToLevels}
+        open={showExitConfirm}
+        title="¿Abandonar partida?"
+        tone="danger"
+      />
     </section>
   )
 }

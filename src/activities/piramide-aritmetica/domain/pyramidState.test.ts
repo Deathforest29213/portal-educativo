@@ -23,25 +23,19 @@ describe('pyramidReducer', () => {
     expect(initial.screen).toBe('setup')
   })
 
-  it('elimina una respuesta vencida solo si coincide con su marca', () => {
+  it('conserva la respuesta incorrecta hasta que la persona la corrija', () => {
     let state = createPyramidState('easy', puzzle)
     state = pyramidReducer(state, { type: 'ANSWER_CHANGED', cellId: '1-0', value: '7' })
     state = {
       ...state,
-      wrongAnswerMarks: { '1-0': { token: 10, value: '7' } },
+      wrongAnswerMarks: { '1-0': { token: 10 } },
     }
 
-    const stale = pyramidReducer(state, {
-      type: 'EXPIRE_WRONG_ANSWERS',
-      marks: [['1-0', { token: 9, value: '7' }]],
-    })
-    const expired = pyramidReducer(state, {
-      type: 'EXPIRE_WRONG_ANSWERS',
-      marks: [['1-0', { token: 10, value: '7' }]],
-    })
+    const corrected = pyramidReducer(state, { type: 'ANSWER_CHANGED', cellId: '1-0', value: '3' })
 
-    expect(stale.answers['1-0']).toBe('7')
-    expect(expired.answers['1-0']).toBe('')
-    expect(expired.wrongAnswerMarks['1-0']).toBeUndefined()
+    expect(state.answers['1-0']).toBe('7')
+    expect(state.wrongAnswerMarks['1-0']).toEqual({ token: 10 })
+    expect(corrected.answers['1-0']).toBe('3')
+    expect(corrected.wrongAnswerMarks['1-0']).toBeUndefined()
   })
 })

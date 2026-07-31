@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, RotateCcw } from 'lucide-react'
-import { useEffect, useMemo, useReducer, type CSSProperties } from 'react'
+import { useEffect, useMemo, useReducer, useState, type CSSProperties } from 'react'
 import { ActionButton } from '../../app/components/ActionButton'
 import { ConfirmDialog } from '../../app/components/ConfirmDialog'
 import { FeedbackBanner } from '../../app/components/FeedbackBanner'
@@ -12,10 +12,8 @@ import {
   type CellId,
   type Difficulty,
   type DifficultyKey,
-  type ErrorMark,
   type OperationMode,
   type Puzzle,
-  type WrongAnswerMark,
 } from './domain/pyramidState'
 
 const DIFFICULTIES: Difficulty[] = [
@@ -71,13 +69,13 @@ export default function PiramideAritmeticaActivity() {
     undefined,
     () => createPyramidState('easy', createPuzzle(DIFFICULTIES[0])),
   )
+  const [showCompletion, setShowCompletion] = useState(false)
   const {
     screen,
     difficultyKey,
     puzzle,
     answers,
     accepted,
-    errorMarks,
     shakeMarks,
     successMarks,
     wrongAnswerMarks,
@@ -94,7 +92,7 @@ export default function PiramideAritmeticaActivity() {
   const completedCount = accepted.size
   const totalEditable = editableCells.length
   const isComplete = totalEditable > 0 && completedCount === totalEditable
-  const hasErrors = Object.keys(wrongAnswerMarks).length > 0 || Object.keys(errorMarks).length > 0
+  const hasErrors = Object.keys(wrongAnswerMarks).length > 0
   const operationLabel = puzzle.operationMode === 'sum' ? 'Suma' : 'Resta'
   const operationSymbol = puzzle.operationMode === 'sum' ? '+' : '−'
 
@@ -127,24 +125,14 @@ export default function PiramideAritmeticaActivity() {
   }, [successMarks])
 
   useEffect(() => {
-    const activeWrongAnswerMarks = Object.entries(wrongAnswerMarks)
-
-    if (activeWrongAnswerMarks.length === 0) {
-      return
+    if (screen === 'playing' && isComplete) {
+      setShowCompletion(true)
     }
-
-    const timeoutId = window.setTimeout(() => {
-      dispatch({
-        type: 'EXPIRE_WRONG_ANSWERS',
-        marks: activeWrongAnswerMarks as Array<[CellId, WrongAnswerMark]>,
-      })
-    }, 1500)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [wrongAnswerMarks])
+  }, [isComplete, screen])
 
   function startGame(nextDifficulty = difficulty) {
     const nextPuzzle = createPuzzle(nextDifficulty)
+    setShowCompletion(false)
     dispatch({
       type: 'START_GAME',
       difficultyKey: nextDifficulty.key,
@@ -156,6 +144,7 @@ export default function PiramideAritmeticaActivity() {
   }
 
   function backToMenu() {
+    setShowCompletion(false)
     dispatch({ type: 'BACK_TO_MENU' })
   }
 
@@ -191,7 +180,6 @@ export default function PiramideAritmeticaActivity() {
     let wrongCount = 0
     const nextAccepted = new Set(accepted)
     let nextAnswers = { ...answers, ...answerOverrides }
-    let nextErrorMarks = tickErrorMarks(errorMarks, cellIds.length)
     let nextShakeMarks = { ...shakeMarks }
     let nextSuccessMarks = { ...successMarks }
     let nextWrongAnswerMarks = { ...wrongAnswerMarks }
@@ -208,7 +196,6 @@ export default function PiramideAritmeticaActivity() {
 
       if (answer === getCellValue(puzzle.solution, cellId)) {
         nextAccepted.add(cellId)
-        delete nextErrorMarks[cellId]
         delete nextShakeMarks[cellId]
         delete nextWrongAnswerMarks[cellId]
         nextSuccessMarks[cellId] = Date.now() + correctCount + 1
@@ -224,17 +211,8 @@ export default function PiramideAritmeticaActivity() {
       delete nextSuccessMarks[cellId]
       nextShakeMarks[cellId] = Date.now() + wrongCount
 
-      if (difficulty.key === 'hard') {
-        delete nextWrongAnswerMarks[cellId]
-        nextErrorMarks[cellId] = {
-          remainingAnswers: 2,
-          token: Date.now() + wrongCount,
-        }
-      } else {
-        nextWrongAnswerMarks[cellId] = {
-          token: Date.now() + wrongCount,
-          value: nextAnswers[cellId] ?? '',
-        }
+      nextWrongAnswerMarks[cellId] = {
+        token: Date.now() + wrongCount,
       }
     })
 
@@ -242,10 +220,8 @@ export default function PiramideAritmeticaActivity() {
       ? correctCount === 1 ? '¡Bien! Esa casilla está correcta.' : '¡Bien! Esas casillas están correctas.'
       : correctCount > 0 && wrongCount > 0
         ? 'Hay aciertos y también casillas para corregir.'
-        : wrongCount > 0 && difficulty.key === 'hard'
-          ? 'Revisa las casillas marcadas y sigue intentando.'
-          : wrongCount > 0
-            ? 'La respuesta se borró para intentarlo de nuevo.'
+        : wrongCount > 0
+          ? 'Revisa las casillas marcadas y corrígelas cuando estés listo.'
             : 'Completa una casilla antes de revisar.'
 
     dispatch({
@@ -253,7 +229,6 @@ export default function PiramideAritmeticaActivity() {
       payload: {
         accepted: nextAccepted,
         answers: nextAnswers,
-        errorMarks: nextErrorMarks,
         shakeMarks: nextShakeMarks,
         successMarks: nextSuccessMarks,
         wrongAnswerMarks: nextWrongAnswerMarks,
@@ -342,8 +317,7 @@ export default function PiramideAritmeticaActivity() {
                     const cellId = makeCellId(rowIndex, colIndex)
                     const isClue = puzzle.clues.has(cellId)
                     const isAccepted = accepted.has(cellId)
-                    const hasHardError = Boolean(errorMarks[cellId])
-                    const hasSoftError = Boolean(wrongAnswerMarks[cellId])
+                    const hasError = Boolean(wrongAnswerMarks[cellId])
                     const hasShake = Boolean(shakeMarks[cellId])
                     const hasSuccessPulse = Boolean(successMarks[cellId])
                     const isActive = activeCell === cellId
@@ -358,7 +332,7 @@ export default function PiramideAritmeticaActivity() {
                           'pyramid-block',
                           isClue ? 'is-clue' : '',
                           isAccepted ? 'is-accepted' : '',
-                          hasHardError || hasSoftError ? 'is-error' : '',
+                          hasError ? 'is-error' : '',
                           hasShake ? 'is-shaking' : '',
                           hasSuccessPulse ? 'is-success-pulse' : '',
                           isActive ? 'is-active' : '',
@@ -387,7 +361,7 @@ export default function PiramideAritmeticaActivity() {
                           />
                         )}
                         <span className="sr-only">
-                          {isClue ? 'Pista' : isAccepted ? 'Respuesta correcta' : hasHardError || hasSoftError ? 'Respuesta incorrecta' : 'Respuesta pendiente'}
+                          {isClue ? 'Pista' : isAccepted ? 'Respuesta correcta' : hasError ? 'Respuesta incorrecta, puedes corregirla' : 'Respuesta pendiente'}
                         </span>
                       </label>
                     )
@@ -440,13 +414,6 @@ export default function PiramideAritmeticaActivity() {
 
           <ProgressBadge current={completedCount} label="Casillas completas" total={totalEditable} />
 
-          {isComplete ? (
-            <div className="pyramid-complete-note">
-              <strong>¡Pirámide completa!</strong>
-              <span>Puntaje final: {score} pts</span>
-            </div>
-          ) : null}
-
           <ActionButton className="pyramid-new-button" icon={<RotateCcw aria-hidden="true" size={18} />} onClick={startNewPuzzle} variant="secondary">
             Nueva pirámide
           </ActionButton>
@@ -462,7 +429,53 @@ export default function PiramideAritmeticaActivity() {
         title="¿Cambiar la pirámide?"
         tone="danger"
       />
+      <PyramidCompletionDialog
+        bestStreak={bestStreak}
+        onMenu={backToMenu}
+        onNewPuzzle={() => startGame(difficulty)}
+        open={showCompletion}
+        score={score}
+      />
     </section>
+  )
+}
+
+function PyramidCompletionDialog({
+  bestStreak,
+  onMenu,
+  onNewPuzzle,
+  open,
+  score,
+}: {
+  bestStreak: number
+  onMenu: () => void
+  onNewPuzzle: () => void
+  open: boolean
+  score: number
+}) {
+  if (!open) return null
+
+  return (
+    <div className="pyramid-completion-backdrop" role="presentation">
+      <section aria-labelledby="pyramid-completion-title" aria-modal="true" className="pyramid-completion-dialog" role="dialog">
+        <span aria-hidden="true" className="pyramid-completion-confetti">✦ ✦ ✦</span>
+        <span className="task-badge">¡Desafío resuelto!</span>
+        <h2 id="pyramid-completion-title">¡Felicitaciones!</h2>
+        <p>Completaste toda la pirámide aritmética.</p>
+        <div className="pyramid-completion-score" aria-label="Resultados de la ronda">
+          <div><span>Puntaje final</span><strong>{score} pts</strong></div>
+          <div><span>Mejor racha</span><strong>{bestStreak}</strong></div>
+        </div>
+        <div className="pyramid-completion-actions">
+          <ActionButton icon={<RotateCcw aria-hidden="true" size={18} />} onClick={onNewPuzzle}>
+            Nueva pirámide
+          </ActionButton>
+          <ActionButton onClick={onMenu} variant="secondary">
+            Volver al menú
+          </ActionButton>
+        </div>
+      </section>
+    </div>
   )
 }
 
@@ -654,17 +667,4 @@ function makeCellId(row: number, col: number): CellId {
 function getCellValue(solution: number[][], cellId: CellId) {
   const [row, col] = cellId.split('-').map(Number)
   return solution[row]?.[col]
-}
-
-function tickErrorMarks(errorMarks: Record<CellId, ErrorMark>, answerCount: number) {
-  const nextMarks: Record<CellId, ErrorMark> = {}
-
-  Object.entries(errorMarks).forEach(([cellId, mark]) => {
-    const remainingAnswers = mark.remainingAnswers - answerCount
-    if (remainingAnswers > 0) {
-      nextMarks[cellId as CellId] = { ...mark, remainingAnswers }
-    }
-  })
-
-  return nextMarks
 }

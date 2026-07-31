@@ -21,8 +21,7 @@ export type Puzzle = {
   solution: number[][]
 }
 
-export type ErrorMark = { remainingAnswers: number; token: number }
-export type WrongAnswerMark = { token: number; value: string }
+export type WrongAnswerMark = { token: number }
 
 export type PyramidState = {
   screen: PyramidScreen
@@ -30,7 +29,6 @@ export type PyramidState = {
   puzzle: Puzzle
   answers: Record<CellId, string>
   accepted: Set<CellId>
-  errorMarks: Record<CellId, ErrorMark>
   shakeMarks: Record<CellId, number>
   successMarks: Record<CellId, number>
   wrongAnswerMarks: Record<CellId, WrongAnswerMark>
@@ -46,7 +44,6 @@ type ReviewPayload = Pick<
   PyramidState,
   | 'accepted'
   | 'answers'
-  | 'errorMarks'
   | 'shakeMarks'
   | 'successMarks'
   | 'wrongAnswerMarks'
@@ -67,7 +64,6 @@ export type PyramidCommand =
   | { type: 'APPLY_REVIEW'; payload: ReviewPayload }
   | { type: 'CLEAR_SHAKES'; marks: Array<[CellId, number]> }
   | { type: 'CLEAR_SUCCESSES'; marks: Array<[CellId, number]> }
-  | { type: 'EXPIRE_WRONG_ANSWERS'; marks: Array<[CellId, WrongAnswerMark]> }
 
 export function createPyramidState(difficultyKey: DifficultyKey, puzzle: Puzzle): PyramidState {
   return {
@@ -76,7 +72,6 @@ export function createPyramidState(difficultyKey: DifficultyKey, puzzle: Puzzle)
     puzzle,
     answers: {},
     accepted: new Set(),
-    errorMarks: {},
     shakeMarks: {},
     successMarks: {},
     wrongAnswerMarks: {},
@@ -122,19 +117,6 @@ export function pyramidReducer(state: PyramidState, command: PyramidCommand): Py
       return { ...state, shakeMarks: clearMatchingMarks(state.shakeMarks, command.marks) }
     case 'CLEAR_SUCCESSES':
       return { ...state, successMarks: clearMatchingMarks(state.successMarks, command.marks) }
-    case 'EXPIRE_WRONG_ANSWERS': {
-      const answers = { ...state.answers }
-      const wrongAnswerMarks = { ...state.wrongAnswerMarks }
-
-      command.marks.forEach(([cellId, mark]) => {
-        if (wrongAnswerMarks[cellId]?.token === mark.token) {
-          if (answers[cellId] === mark.value) answers[cellId] = ''
-          delete wrongAnswerMarks[cellId]
-        }
-      })
-
-      return { ...state, answers, wrongAnswerMarks }
-    }
     default:
       return state
   }

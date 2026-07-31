@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useReducer, useRef } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ActionButton } from '../../app/components/ActionButton'
+import { ConfirmDialog } from '../../app/components/ConfirmDialog'
 import { FeedbackBanner } from '../../app/components/FeedbackBanner'
 import { ProgressBadge } from '../../app/components/ProgressBadge'
 import { browserRandom } from '../../platform/random/RandomSource'
@@ -42,6 +43,7 @@ export default function GuiaLenguajeActivity() {
     undefined,
     () => createGuideState(makeTask2Choices()),
   )
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
   const {
     stage,
     sequence,
@@ -95,8 +97,18 @@ export default function GuiaLenguajeActivity() {
     dispatch({ type: 'SET_STAGE', stage: next ?? 'results' })
   }
 
-  function goBackToGuideMenu() {
+  function discardGuideProgress() {
+    setShowExitConfirm(false)
     resetGuide('menu', [])
+  }
+
+  function requestGuideExit() {
+    if (stage === 'results') {
+      discardGuideProgress()
+      return
+    }
+
+    setShowExitConfirm(true)
   }
 
   function goBackToTaskOneReading() {
@@ -104,16 +116,16 @@ export default function GuiaLenguajeActivity() {
   }
 
   const backButtonLabel = stage === 'task1' && task1Mode === 'quiz' ? '← Volver a la lectura' : '← Volver al menú'
-  const backButtonAction = stage === 'task1' && task1Mode === 'quiz' ? goBackToTaskOneReading : goBackToGuideMenu
+  const backButtonAction = stage === 'task1' && task1Mode === 'quiz' ? goBackToTaskOneReading : requestGuideExit
 
   if (stage === 'menu') {
     return (
       <section className="guide-original guide-original-menu">
         <div className="guide-original-copy">
           <span className="task-badge">Lenguaje</span>
-          <h2>Elige una parte de la guía</h2>
+          <h2>Guía de Lenguaje</h2>
           <p className="guide-original-help">
-            Selecciona una tarea específica o trabaja la guía completa en secuencia.
+            Explora tres trabajos distintos o completa la guía en orden, desde el primero hasta el tercero.
           </p>
         </div>
         <div className="guide-original-grid">
@@ -127,10 +139,15 @@ export default function GuiaLenguajeActivity() {
               <small>{option.description}</small>
             </button>
           ))}
+          <button className="guide-original-card guide-original-card--all ui-card ui-card--interactive" onClick={() => startGuide('all')} type="button">
+            <span>Guía completa</span>
+            <div className="guide-original-card-sequence" aria-hidden="true">
+              <b>1</b><i>→</i><b>2</b><i>→</i><b>3</b>
+            </div>
+            <strong>Hacer los tres trabajos</strong>
+            <small>Avanza por las tres tareas en orden y recibe un resultado conjunto al finalizar.</small>
+          </button>
         </div>
-        <ActionButton className="guide-start-button" onClick={() => startGuide('all')}>
-          Hacer guía completa
-        </ActionButton>
       </section>
     )
   }
@@ -189,6 +206,15 @@ export default function GuiaLenguajeActivity() {
       {stage === 'results' ? (
         <ResultsScreen results={results} resetGuide={() => resetGuide()} selection={selection} />
       ) : null}
+      <ConfirmDialog
+        confirmLabel="Descartar avance"
+        description="Se perderán las respuestas y el avance de esta guía."
+        onCancel={() => setShowExitConfirm(false)}
+        onConfirm={discardGuideProgress}
+        open={showExitConfirm}
+        title="¿Volver al menú?"
+        tone="danger"
+      />
     </section>
   )
 }
@@ -377,15 +403,44 @@ function TaskTwo(props: {
           <p className="guide-progress">Frase {props.questionIndex + 1}/{task2Prompts.length}</p>
           <h3>{prompt.question}</h3>
           <div className={`guide-answer-slot ${props.feedback === false ? 'is-wrong' : props.feedback === true ? 'is-correct' : ''}`}>
-            {props.selected.length === 0 ? <span>...</span> : props.selected.map((fragment) => (
-              <button
-                disabled={props.feedback !== null}
-                key={fragment.id}
-                onClick={() => props.setSelected(props.selected.filter((item) => item.id !== fragment.id))}
-                type="button"
-              >
-                {fragment.text}
-              </button>
+            {props.selected.length === 0 ? <span>Selecciona y ordena los fragmentos.</span> : props.selected.map((fragment, index) => (
+              <div className="guide-answer-fragment" key={fragment.id}>
+                <span>{fragment.text}</span>
+                <div className="guide-answer-fragment-actions">
+                  <button
+                    aria-label={`Mover ${fragment.text} a la izquierda`}
+                    disabled={props.feedback !== null || index === 0}
+                    onClick={() => {
+                      const reordered = [...props.selected]
+                      ;[reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]]
+                      props.setSelected(reordered)
+                    }}
+                    type="button"
+                  >
+                    ←
+                  </button>
+                  <button
+                    aria-label={`Mover ${fragment.text} a la derecha`}
+                    disabled={props.feedback !== null || index === props.selected.length - 1}
+                    onClick={() => {
+                      const reordered = [...props.selected]
+                      ;[reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]]
+                      props.setSelected(reordered)
+                    }}
+                    type="button"
+                  >
+                    →
+                  </button>
+                  <button
+                    aria-label={`Quitar ${fragment.text}`}
+                    disabled={props.feedback !== null}
+                    onClick={() => props.setSelected(props.selected.filter((item) => item.id !== fragment.id))}
+                    type="button"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
           <FeedbackBar correct={props.feedback} />

@@ -179,7 +179,7 @@ export const task3Questions = [
 ]
 
 export const menuOptions = [
-  { id: 'task1', title: 'Las cartas de Teodoro', label: 'Tarea 1', description: 'Lectura breve y preguntas de comprensión.', image: image('teodoro-1.webp') },
-  { id: 'task2', title: 'Incendio en el cerro', label: 'Tarea 2', description: 'Construcción de respuestas con fragmentos.', image: task2Image },
-  { id: 'task3', title: 'Fichas interrogativas', label: 'Tarea 3', description: 'Respuestas a partir de imágenes y situaciones.', image: image('cosa-1-2.webp') },
+  { id: 'task1', title: 'Las cartas de Teodoro', label: 'Trabajo 1 · Lee y comprende', description: 'Lee una historia por partes y responde preguntas sobre lo que ocurrió.', image: image('teodoro-1.webp') },
+  { id: 'task2', title: 'Incendio en el cerro', label: 'Trabajo 2 · Ordena ideas', description: 'Une y ordena fragmentos para construir respuestas completas.', image: task2Image },
+  { id: 'task3', title: 'Fichas interrogativas', label: 'Trabajo 3 · Observa y responde', description: 'Relaciona imágenes y situaciones con la respuesta adecuada.', image: image('cosa-1-2.webp') },
 ] as const

@@ -298,6 +298,96 @@
   font-weight: 850;
 }
 
+.pyramid-completion-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(23 32 51 / 0.48);
+  padding: 22px;
+}
+
+.pyramid-completion-dialog {
+  display: grid;
+  width: min(480px, 100%);
+  gap: 16px;
+  justify-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--pyramid-tone) 28%, #ffffff);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 20% 12%, color-mix(in srgb, var(--pyramid-tone) 18%, transparent), transparent 29%),
+    #ffffff;
+  box-shadow: 0 24px 70px rgb(23 32 51 / 0.3);
+  padding: clamp(26px, 5vw, 42px);
+  text-align: center;
+}
+
+.pyramid-completion-confetti {
+  color: var(--pyramid-tone);
+  font-size: 2rem;
+  letter-spacing: 0.35em;
+  animation: pyramid-completion-sparkle 1.6s ease-in-out infinite;
+}
+
+.pyramid-completion-dialog h2,
+.pyramid-completion-dialog p {
+  margin: 0;
+}
+
+.pyramid-completion-dialog h2 {
+  color: color-mix(in srgb, var(--pyramid-tone) 78%, #172033);
+  font-size: clamp(2rem, 6vw, 3rem);
+}
+
+.pyramid-completion-dialog p {
+  color: var(--board-muted);
+  font-weight: 750;
+}
+
+.pyramid-completion-score {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pyramid-completion-score div {
+  display: grid;
+  gap: 4px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--pyramid-tone) 9%, #ffffff);
+  padding: 14px 10px;
+}
+
+.pyramid-completion-score span {
+  color: var(--board-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pyramid-completion-score strong {
+  color: #172033;
+  font-size: 1.4rem;
+}
+
+.pyramid-completion-actions {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+}
+
+.pyramid-completion-actions .action-button {
+  justify-content: center;
+}
+
+@keyframes pyramid-completion-sparkle {
+  0%, 100% { transform: scale(0.9) rotate(-3deg); }
+  50% { transform: scale(1.12) rotate(3deg); }
+}
+
 .pyramid-row {
   display: flex;
   justify-content: center;
