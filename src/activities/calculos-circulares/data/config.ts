@@ -4,6 +4,7 @@ export const MAX_CIRCULAR_NUMBER = 30
 export const MIN_CIRCULAR_NUMBER = 1
 export const MIN_EMPTY_CELLS = 3
 export const MAX_EMPTY_CELLS = 7
+export const CIRCULAR_SESSION_ROUNDS = 5
 
 export const CUSTOM_CIRCULAR_DEFAULTS: CircularSettings = {
   emptyCells: 5,

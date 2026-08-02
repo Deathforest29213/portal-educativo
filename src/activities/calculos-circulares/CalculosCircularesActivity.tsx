@@ -1,15 +1,15 @@
 import { CircleHelp, Sparkles, Trophy } from 'lucide-react'
-import { useEffect, useMemo, useReducer, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ActionButton } from '../../app/components/ActionButton'
 import { FeedbackBanner } from '../../app/components/FeedbackBanner'
-import { ProgressBadge } from '../../app/components/ProgressBadge'
-import { CIRCULAR_DIFFICULTIES, MAX_CIRCULAR_NUMBER, MAX_EMPTY_CELLS, MIN_CIRCULAR_NUMBER, MIN_EMPTY_CELLS, getCircularDifficulty } from './data/config'
-import { createCircularGameState, circularGameReducer } from './domain/gameState'
+import { CIRCULAR_DIFFICULTIES, CIRCULAR_SESSION_ROUNDS, MAX_CIRCULAR_NUMBER, MAX_EMPTY_CELLS, MIN_CIRCULAR_NUMBER, MIN_EMPTY_CELLS, getCircularDifficulty } from './data/config'
+import { createCircularGameState, circularGameReducer, type CircularRoundResult } from './domain/gameState'
 import { createCircularPuzzle, getOperationSymbol, getRelatedLines } from './domain/puzzle'
 import type { CircularCellId, CircularLine, CircularLineId, CircularOperation } from './types'
 import './calculos-circulares.css'
 
 const OPERATIONS: CircularOperation[] = ['+', '-', 'x', '/']
+type RoundTransition = 'idle' | 'leaving' | 'entering'
 
 export default function CalculosCircularesActivity() {
   const initialDifficulty = CIRCULAR_DIFFICULTIES[0]
@@ -19,17 +19,22 @@ export default function CalculosCircularesActivity() {
     () => createCircularGameState(createCircularPuzzle(initialDifficulty)),
   )
   const [activeCell, setActiveCell] = useState<CircularCellId | null>(null)
+  const [roundTransition, setRoundTransition] = useState<RoundTransition>('idle')
+  const roundTransitionTimers = useRef<number[]>([])
   const {
     answers,
     bestStreak,
     completedRounds,
+    correctCells,
     customEmptyCells,
     customMaxNumber,
     customOperations,
     difficultyKey,
+    feedbackVersion,
     hintedLine,
     message,
     puzzle,
+    roundResults,
     score,
     screen,
     streak,
@@ -42,7 +47,8 @@ export default function CalculosCircularesActivity() {
   })
   const solvedCount = [...puzzle.blanks].filter((cellId) => answers[cellId]?.trim() !== '').length
   const canStartCustom = customOperations.length > 0
-  const isCompleted = screen === 'completed'
+  const isSessionCompleted = screen === 'session-completed'
+  const isCompleted = screen !== 'playing'
 
   useEffect(() => {
     if (!hintedLine) return
@@ -50,6 +56,10 @@ export default function CalculosCircularesActivity() {
     const timeoutId = window.setTimeout(() => dispatch({ type: 'CLEAR_HINT' }), 1_650)
     return () => window.clearTimeout(timeoutId)
   }, [hintedLine])
+
+  useEffect(() => () => {
+    roundTransitionTimers.current.forEach((timer) => window.clearTimeout(timer))
+  }, [])
 
   const suggestedLine = useMemo(() => getSuggestedLine(activeCell, puzzle.lines, puzzle.blanks, answers), [activeCell, answers, puzzle.blanks, puzzle.lines])
 
@@ -60,8 +70,18 @@ export default function CalculosCircularesActivity() {
   }
 
   function nextRound() {
-    dispatch({ type: 'NEXT_ROUND', puzzle: createCircularPuzzle(difficulty) })
-    setActiveCell(null)
+    if (roundTransition !== 'idle' || isSessionCompleted) return
+
+    setRoundTransition('leaving')
+    roundTransitionTimers.current.forEach((timer) => window.clearTimeout(timer))
+    roundTransitionTimers.current = [
+      window.setTimeout(() => {
+        dispatch({ type: 'NEXT_ROUND', puzzle: createCircularPuzzle(difficulty) })
+        setActiveCell(null)
+        setRoundTransition('entering')
+      }, 400),
+      window.setTimeout(() => setRoundTransition('idle'), 600),
+    ]
   }
 
   function showHint() {
@@ -179,8 +199,7 @@ export default function CalculosCircularesActivity() {
 
       <header className="circular-status-panel">
         <div>
-          <span className="task-badge">Cálculo mental</span>
-          <h2>{isCompleted ? '¡Círculo resuelto!' : 'Cálculos circulares'}</h2>
+          <h2>{isSessionCompleted ? '¡Meta completada!' : isCompleted ? '¡Círculo resuelto!' : 'Cálculos circulares'}</h2>
           <p>{message}</p>
         </div>
         <div className="circular-score-grid" aria-label="Progreso de la actividad">
@@ -197,29 +216,32 @@ export default function CalculosCircularesActivity() {
               <span className="circular-difficulty-pill">{difficulty.label}</span>
               <strong>{difficulty.rangeLabel}</strong>
             </div>
-            <ProgressBadge current={solvedCount} label="Casillas" total={puzzle.blanks.size} />
+            <div className="circular-progress-label" aria-label={`${solvedCount} de ${puzzle.blanks.size} casillas completas`}>
+              <strong>{solvedCount} de {puzzle.blanks.size}</strong>
+              <span>casillas completas</span>
+            </div>
           </div>
 
           <CircularBoard
             activeCell={activeCell}
             answers={answers}
+            correctCells={correctCells}
+            feedbackVersion={feedbackVersion}
             hintedLine={hintedLine}
             onAnswerChange={(cellId, value) => dispatch({ type: 'ANSWER_CHANGED', cellId, value })}
             onCellFocus={setActiveCell}
             puzzle={puzzle}
+            roundTransition={roundTransition}
             wrongCells={wrongCells}
           />
         </article>
 
         <aside className="circular-side-panel">
           <section className="circular-instruction-card">
-            <h3>Cómo resolver</h3>
-            <ol>
-              <li>Relaciona cada fila y columna.</li>
-              <li>Completa todas las casillas vacías.</li>
-              <li>Envía la ronda para revisar el círculo completo.</li>
-            </ol>
+            <CircleHelp aria-hidden="true" size={20} />
+            <p>Completa las casillas y usa la ayuda para ver la ecuación conectada.</p>
           </section>
+          <SessionProgress isNewResult={isCompleted} results={roundResults} />
           {!isCompleted ? (
             <>
               <ActionButton disabled={!suggestedLine} onClick={showHint} variant="secondary">
@@ -231,12 +253,21 @@ export default function CalculosCircularesActivity() {
               </ActionButton>
               {wrongCells.size > 0 ? <FeedbackBanner title="Aún puedes corregir" tone="danger">Las casillas marcadas necesitan otro número. La racha se reinició, pero la ronda sigue abierta.</FeedbackBanner> : null}
             </>
+          ) : isSessionCompleted ? (
+            <section className="circular-session-completion-card">
+              <Trophy aria-hidden="true" size={32} />
+              <h3>¡Sesión terminada!</h3>
+              <p>Completaste los {CIRCULAR_SESSION_ROUNDS} círculos de esta actividad.</p>
+              <ActionButton onClick={startGame}>Nueva sesión</ActionButton>
+            </section>
           ) : (
             <section className="circular-completion-card">
               <Sparkles aria-hidden="true" size={32} />
               <h3>{streak > 0 ? `Racha de ${streak}` : 'Ronda superada'}</h3>
-              <p>Has resuelto {completedRounds} {completedRounds === 1 ? 'círculo' : 'círculos'} en esta sesión.</p>
-              <ActionButton onClick={nextRound}>Nuevo círculo</ActionButton>
+              <p>Has resuelto {completedRounds} de {CIRCULAR_SESSION_ROUNDS} círculos en esta sesión.</p>
+              <ActionButton disabled={roundTransition !== 'idle'} onClick={nextRound}>
+                {roundTransition === 'idle' ? 'Nuevo círculo' : 'Preparando círculo…'}
+              </ActionButton>
             </section>
           )}
         </aside>
@@ -248,51 +279,62 @@ export default function CalculosCircularesActivity() {
 function CircularBoard({
   activeCell,
   answers,
+  correctCells,
+  feedbackVersion,
   hintedLine,
   onAnswerChange,
   onCellFocus,
   puzzle,
+  roundTransition,
   wrongCells,
 }: {
   activeCell: CircularCellId | null
   answers: Record<CircularCellId, string>
+  correctCells: Set<CircularCellId>
+  feedbackVersion: number
   hintedLine: CircularLineId | null
   onAnswerChange: (cellId: CircularCellId, value: string) => void
   onCellFocus: (cellId: CircularCellId) => void
   puzzle: ReturnType<typeof createCircularPuzzle>
+  roundTransition: RoundTransition
   wrongCells: Set<CircularCellId>
 }) {
+  const hintedCells = hintedLine ? new Set(puzzle.lines.find((line) => line.id === hintedLine)?.cells ?? []) : new Set<CircularCellId>()
+
   return (
-    <div className="circular-board" aria-label="Cuadrícula de cálculos circulares">
-      <div className="circular-grid">
-        {puzzle.lines.map((line) => <LineSymbols highlighted={hintedLine === line.id} key={line.id} line={line} />)}
-        {Object.entries(puzzle.values).map(([cellId, value]) => {
-          const id = cellId as CircularCellId
-          const isBlank = puzzle.blanks.has(id)
-          const isWrong = wrongCells.has(id)
-          const isActive = activeCell === id
-          return (
-            <label
-              className={`circular-number-cell ${isBlank ? 'is-blank' : 'is-clue'} ${isWrong ? 'is-wrong' : ''} ${isActive ? 'is-active' : ''}`}
-              key={id}
-              style={cellGridPosition(id)}
-              title={isBlank ? 'Una pista puede destacar una ecuación conectada a esta casilla.' : 'Número de apoyo'}
-            >
-              {isBlank ? (
-                <input
-                  aria-label={`Casilla ${id}`}
-                  inputMode="numeric"
-                  maxLength={2}
-                  onChange={(event) => onAnswerChange(id, event.target.value)}
-                  onFocus={() => onCellFocus(id)}
-                  pattern="[0-9]*"
-                  type="text"
-                  value={answers[id] ?? ''}
-                />
-              ) : <strong>{value}</strong>}
-            </label>
-          )
-        })}
+    <div className={`circular-board-transition is-${roundTransition}`}>
+      <div className="circular-board" aria-label="Cuadrícula de cálculos circulares">
+        <div className={`circular-grid ${roundTransition === 'entering' ? 'is-changing-exercise' : ''}`}>
+          {puzzle.lines.map((line) => <LineSymbols highlighted={hintedLine === line.id} key={line.id} line={line} />)}
+          {Object.entries(puzzle.values).map(([cellId, value]) => {
+            const id = cellId as CircularCellId
+            const isBlank = puzzle.blanks.has(id)
+            const isCorrect = correctCells.has(id)
+            const isWrong = wrongCells.has(id)
+            const isActive = activeCell === id
+            return (
+              <label
+                className={`circular-number-cell ${isBlank ? 'is-blank' : 'is-clue'} ${hintedCells.has(id) ? 'is-hint-related' : ''} ${isCorrect ? 'is-correct' : ''} ${isWrong ? 'is-wrong' : ''} ${isActive ? 'is-active' : ''}`}
+                key={`${id}-${isCorrect || isWrong ? feedbackVersion : 'idle'}`}
+                style={cellGridPosition(id)}
+                title={isBlank ? 'Una pista puede destacar una ecuación conectada a esta casilla.' : 'Número de apoyo'}
+              >
+                {isBlank ? (
+                  <input
+                    aria-label={`Casilla ${id}`}
+                    inputMode="numeric"
+                    maxLength={2}
+                    onChange={(event) => onAnswerChange(id, event.target.value)}
+                    onFocus={() => onCellFocus(id)}
+                    pattern="[0-9]*"
+                    type="text"
+                    value={answers[id] ?? ''}
+                  />
+                ) : <strong>{value}</strong>}
+              </label>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -321,6 +363,32 @@ function CircularPreview({ operations }: { operations: CircularOperation[] }) {
 
 function ScoreItem({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return <div><span>{icon}</span><strong>{value}</strong><small>{label}</small></div>
+}
+
+function SessionProgress({ isNewResult, results }: { isNewResult: boolean; results: CircularRoundResult[] }) {
+  return (
+    <section className="circular-session-progress" aria-label={`Meta de sesión: ${results.length} de ${CIRCULAR_SESSION_ROUNDS} círculos resueltos`}>
+      <div className="circular-session-progress-heading">
+        <strong>Meta de sesión</strong>
+        <span>{results.length} de {CIRCULAR_SESSION_ROUNDS}</span>
+      </div>
+      <div className="circular-session-slots">
+        {Array.from({ length: CIRCULAR_SESSION_ROUNDS }, (_, index) => {
+          const result = results[index]
+          const label = result === 'star' ? 'Estrella' : result === 'effort' ? 'Esfuerzo' : result === 'challenge' ? 'Desafío' : 'Pendiente'
+          const isLatest = isNewResult && index === results.length - 1
+          return (
+            <span
+              aria-label={`Círculo ${index + 1}: ${label}`}
+              className={`circular-session-slot ${result ? `is-${result}` : ''} ${isLatest ? 'is-new' : ''}`}
+              key={index}
+              role="img"
+            />
+          )
+        })}
+      </div>
+    </section>
+  )
 }
 
 function getSuggestedLine(

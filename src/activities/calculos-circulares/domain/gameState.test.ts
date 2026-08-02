@@ -19,12 +19,57 @@ describe('circularGameReducer', () => {
     expect(state.screen).toBe('playing')
     expect(state.streak).toBe(0)
     expect(state.wrongCells.has(firstBlank)).toBe(true)
+    expect(state.correctCells.size).toBe(otherBlanks.length)
+    expect(state.feedbackVersion).toBe(1)
 
     state = circularGameReducer(state, { type: 'ANSWER_CHANGED', cellId: firstBlank, value: puzzle.values[firstBlank].toString() })
     state = circularGameReducer(state, { type: 'SUBMIT_ROUND' })
     expect(state.screen).toBe('completed')
     expect(state.streak).toBe(0)
     expect(state.score).toBeGreaterThan(0)
+    expect(state.correctCells).toEqual(puzzle.blanks)
+    expect(state.feedbackVersion).toBe(2)
+    expect(state.roundResults).toEqual(['effort'])
+    expect(state.roundAttempts).toBe(2)
+  })
+
+  it('clasifica el resultado por los intentos y termina después de cinco círculos', () => {
+    let state = circularGameReducer(createCircularGameState(puzzle), { type: 'START_GAME', puzzle })
+
+    for (let round = 0; round < 5; round += 1) {
+      for (const cellId of puzzle.blanks) {
+        state = circularGameReducer(state, { type: 'ANSWER_CHANGED', cellId, value: puzzle.values[cellId].toString() })
+      }
+      state = circularGameReducer(state, { type: 'SUBMIT_ROUND' })
+
+      if (round < 4) {
+        state = circularGameReducer(state, { type: 'NEXT_ROUND', puzzle })
+      }
+    }
+
+    expect(state.roundResults).toEqual(['star', 'star', 'star', 'star', 'star'])
+    expect(state.screen).toBe('session-completed')
+  })
+
+  it('no cuenta revisiones incompletas y registra Desafío desde el cuarto intento', () => {
+    let state = circularGameReducer(createCircularGameState(puzzle), { type: 'START_GAME', puzzle })
+    const [firstBlank, ...otherBlanks] = [...puzzle.blanks]
+
+    state = circularGameReducer(state, { type: 'SUBMIT_ROUND' })
+    expect(state.roundAttempts).toBe(0)
+
+    state = circularGameReducer(state, { type: 'ANSWER_CHANGED', cellId: firstBlank, value: '99' })
+    otherBlanks.forEach((cellId) => {
+      state = circularGameReducer(state, { type: 'ANSWER_CHANGED', cellId, value: puzzle.values[cellId].toString() })
+    })
+    state = circularGameReducer(state, { type: 'SUBMIT_ROUND' })
+    state = circularGameReducer(state, { type: 'SUBMIT_ROUND' })
+    state = circularGameReducer(state, { type: 'SUBMIT_ROUND' })
+    state = circularGameReducer(state, { type: 'ANSWER_CHANGED', cellId: firstBlank, value: puzzle.values[firstBlank].toString() })
+    state = circularGameReducer(state, { type: 'SUBMIT_ROUND' })
+
+    expect(state.roundAttempts).toBe(4)
+    expect(state.roundResults).toEqual(['challenge'])
   })
 
   it('limita las opciones personalizadas al rango acordado', () => {
