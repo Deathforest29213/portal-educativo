@@ -1104,6 +1104,44 @@ h1 {
   line-height: 1.35;
 }
 
+.guide-original-card--all {
+  border-color: rgb(103 83 196 / 0.28);
+  background:
+    radial-gradient(circle at 20% 12%, rgb(225 215 255 / 0.78), transparent 30%),
+    linear-gradient(145deg, #ffffff, #f6f2ff);
+}
+
+.guide-original-card--all:hover {
+  border-color: #6753c4;
+  box-shadow: 0 24px 52px rgb(103 83 196 / 0.2);
+}
+
+.guide-original-card-sequence {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 118px;
+  color: #6753c4;
+  font-size: 1.15rem;
+}
+
+.guide-original-card-sequence b {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: #6753c4;
+  box-shadow: 0 8px 18px rgb(103 83 196 / 0.24);
+  color: #ffffff;
+}
+
+.guide-original-card-sequence i {
+  font-style: normal;
+  font-weight: 950;
+}
+
 .guide-original-workspace,
 .snake-game-screen,
 .guide-original-reading {
@@ -1557,6 +1595,50 @@ h1 {
 .guide-answer-slot.is-wrong {
   border-color: #ea4335;
   background: #fce8e6;
+}
+
+.guide-answer-fragment {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 4px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgb(50 82 130 / 0.12);
+  color: #21304a;
+  font-weight: 900;
+  padding: 7px 8px 7px 14px;
+}
+
+.guide-answer-fragment-actions {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.guide-answer-fragment-actions button {
+  display: grid;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  place-items: center;
+  border: 1px solid #eed9ce;
+  border-radius: 9px;
+  background: #fffaf6;
+  box-shadow: none;
+  color: #a34b31;
+  cursor: pointer;
+  padding: 0;
+}
+
+.guide-answer-fragment-actions button:hover:not(:disabled) {
+  border-color: #e46f4a;
+  background: #fff0e8;
+}
+
+.guide-answer-fragment-actions button:disabled {
+  cursor: default;
+  opacity: 0.35;
 }
 
 .guide-fragments p {

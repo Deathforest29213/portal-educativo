@@ -1,3 +1,4 @@
+import { calculosCircularesModule } from './calculos-circulares'
 import { guiaLenguajeModule } from './guia-lenguaje'
 import { lecturaPiramideModule } from './lectura-piramide'
 import { operacionesTableroModule } from './operaciones-tablero'
@@ -11,6 +12,7 @@ export const activityModules: ActivityModule[] = [
   guiaLenguajeModule,
   pronunciacionModule,
   serpienteMatematicaModule,
+  calculosCircularesModule,
   operacionesTableroModule,
   piramideAritmeticaModule,
 ]
