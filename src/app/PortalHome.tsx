@@ -23,8 +23,10 @@ export function PortalHome({
       <Header isOnline={isOnline} />
       <section className="intro-section" aria-labelledby="page-title">
         <div>
-          <p className="section-label">Aula digital</p>
-          <h1 id="page-title">Aula de Actividades</h1>
+          <div className="intro-title">
+            <img alt="" className="intro-title-icon" src="/icons/aula-icon.svg" />
+            <h1 id="page-title">Aula de Actividades</h1>
+          </div>
           <p className="intro-copy">
             Elige un área y abre una actividad. Puedes descargarla para usarla sin internet.
           </p>
@@ -55,14 +57,7 @@ export function PortalHome({
 
 function Header({ isOnline }: { isOnline: boolean }) {
   return (
-    <header className="topbar">
-      <div className="brand-mark" aria-hidden="true">
-        A
-      </div>
-      <div>
-        <strong>Aula de Actividades</strong>
-        <span>Lenguaje y Matemática en un solo lugar</span>
-      </div>
+    <header className="topbar topbar--connection">
       <div aria-live="polite" className={`connection-badge ${isOnline ? 'is-online' : 'is-offline'}`}>
         {isOnline ? <Wifi size={18} /> : <WifiOff size={18} />}
         {isOnline ? 'Con conexión' : 'Sin conexión'}

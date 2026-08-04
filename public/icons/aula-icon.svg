@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Aula">
-  <rect width="128" height="128" rx="24" fill="#0f172a"/>
-  <path d="M31 36h66v56H31z" fill="#fff" opacity=".96"/>
-  <path d="M42 50h44M42 64h30M42 78h20" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>
-  <circle cx="92" cy="88" r="14" fill="#16a34a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Aula con pizarra</title>
+  <rect width="64" height="64" rx="14" fill="#fff0e2"/>
+  <rect x="12" y="12" width="40" height="31" rx="5" fill="#243b53"/>
+  <path d="M19 25c5-5 10 5 16 0s8-4 11-1" fill="none" stroke="#fff" stroke-linecap="round" stroke-width="3"/>
+  <path d="M20 47h24M25 43v4M39 43v4" fill="none" stroke="#a84b12" stroke-linecap="round" stroke-width="3"/>
 </svg>

@@ -1,15 +1,18 @@
-import type { CircularDifficulty, CircularDifficultyKey, CircularSettings } from '../types'
+import type { CircularActivitySettings, CircularDifficulty, CircularDifficultyKey } from '../types'
 
 export const MAX_CIRCULAR_NUMBER = 30
 export const MIN_CIRCULAR_NUMBER = 1
 export const MIN_EMPTY_CELLS = 3
 export const MAX_EMPTY_CELLS = 7
 export const CIRCULAR_SESSION_ROUNDS = 5
+export const MIN_CIRCULAR_SESSION_GOAL = 1
+export const MAX_CIRCULAR_SESSION_GOAL = 10
 
-export const CUSTOM_CIRCULAR_DEFAULTS: CircularSettings = {
+export const CUSTOM_CIRCULAR_DEFAULTS: CircularActivitySettings = {
   emptyCells: 5,
   maxNumber: 20,
   operations: ['+', '-', 'x'],
+  sessionGoal: CIRCULAR_SESSION_ROUNDS,
 }
 
 export const CIRCULAR_DIFFICULTIES: CircularDifficulty[] = [
@@ -20,6 +23,7 @@ export const CIRCULAR_DIFFICULTIES: CircularDifficulty[] = [
     maxNumber: 10,
     operations: ['+', '-'],
     emptyCells: 3,
+    sessionGoal: CIRCULAR_SESSION_ROUNDS,
     rangeLabel: 'Números de 0 a 10',
     tone: '#2f9e44',
   },
@@ -30,6 +34,7 @@ export const CIRCULAR_DIFFICULTIES: CircularDifficulty[] = [
     maxNumber: 20,
     operations: ['+', '-', 'x'],
     emptyCells: 5,
+    sessionGoal: CIRCULAR_SESSION_ROUNDS,
     rangeLabel: 'Números de 0 a 20',
     tone: '#1971c2',
   },
@@ -40,6 +45,7 @@ export const CIRCULAR_DIFFICULTIES: CircularDifficulty[] = [
     maxNumber: 30,
     operations: ['+', '-', 'x', '/'],
     emptyCells: 7,
+    sessionGoal: CIRCULAR_SESSION_ROUNDS,
     rangeLabel: 'Números de 0 a 30',
     tone: '#c2410c',
   },
@@ -55,7 +61,7 @@ export const CIRCULAR_DIFFICULTIES: CircularDifficulty[] = [
 
 export function getCircularDifficulty(
   key: CircularDifficultyKey,
-  custom: CircularSettings = CUSTOM_CIRCULAR_DEFAULTS,
+  custom: CircularActivitySettings = CUSTOM_CIRCULAR_DEFAULTS,
 ): CircularDifficulty {
   if (key !== 'custom') {
     return CIRCULAR_DIFFICULTIES.find((difficulty) => difficulty.key === key) ?? CIRCULAR_DIFFICULTIES[0]
@@ -63,6 +69,7 @@ export function getCircularDifficulty(
 
   const maxNumber = clamp(custom.maxNumber, MIN_CIRCULAR_NUMBER, MAX_CIRCULAR_NUMBER)
   const emptyCells = clamp(custom.emptyCells, MIN_EMPTY_CELLS, MAX_EMPTY_CELLS)
+  const sessionGoal = clamp(custom.sessionGoal, MIN_CIRCULAR_SESSION_GOAL, MAX_CIRCULAR_SESSION_GOAL)
 
   return {
     key: 'custom',
@@ -71,6 +78,7 @@ export function getCircularDifficulty(
     maxNumber,
     operations: custom.operations,
     emptyCells,
+    sessionGoal,
     rangeLabel: `Números de 0 a ${maxNumber}`,
     tone: '#7e57c2',
   }

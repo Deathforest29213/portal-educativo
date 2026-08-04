@@ -11,10 +11,12 @@ export type CircularDifficulty = {
   maxNumber: number
   operations: CircularOperation[]
   rangeLabel: string
+  sessionGoal: number
   tone: string
 }
 
 export type CircularSettings = Pick<CircularDifficulty, 'emptyCells' | 'maxNumber' | 'operations'>
+export type CircularActivitySettings = CircularSettings & Pick<CircularDifficulty, 'sessionGoal'>
 
 export type CircularLine = {
   cells: [CircularCellId, CircularCellId, CircularCellId]

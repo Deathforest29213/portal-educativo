@@ -49,6 +49,9 @@ describe('PortalHome', () => {
     )
 
     expect(markup).toContain('Aula de Actividades')
+    expect(markup).toContain('src="/icons/aula-icon.svg"')
+    expect(markup).not.toContain('Lenguaje y Matemática en un solo lugar')
+    expect(markup).not.toContain('Aula digital')
     expect(markup).toContain('family-language')
     expect(markup).toContain('family-math')
     expect(markup).toContain('Actividades de')

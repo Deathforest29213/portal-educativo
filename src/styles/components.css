@@ -217,13 +217,32 @@ textarea {
   border-bottom: 1px solid var(--color-border);
 }
 
-.portal-home .brand-mark {
-  width: var(--touch-target);
-  height: var(--touch-target);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-primary);
-  box-shadow: inset 0 -4px 0 var(--color-highlight);
+.portal-home .topbar--connection {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 3.5rem;
+}
+
+.portal-home .topbar--connection .connection-badge {
+  grid-column: 2;
+  justify-self: end;
+}
+
+.portal-home .intro-title {
+  align-items: center;
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.portal-home .intro-title h1 {
+  margin-bottom: 0;
+}
+
+.portal-home .intro-title-icon {
+  flex: 0 0 auto;
+  height: clamp(3.25rem, 5vw, 4.25rem);
+  object-fit: contain;
+  width: clamp(3.25rem, 5vw, 4.25rem);
 }
 
 .portal-home .intro-section {

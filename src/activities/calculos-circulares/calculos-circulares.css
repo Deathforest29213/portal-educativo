@@ -13,6 +13,87 @@
   min-height: 70vh;
 }
 
+.circular-calculations--final {
+  align-content: center;
+  min-height: 70vh;
+}
+
+.circular-final-screen {
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--circular-tone) 22%, var(--circular-line));
+  border-radius: 28px;
+  box-shadow: 0 18px 42px rgb(32 48 74 / 0.1);
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  margin: auto;
+  max-width: 640px;
+  padding: clamp(28px, 4vw, 46px);
+  text-align: center;
+  width: 100%;
+}
+
+.circular-final-screen > svg {
+  animation: circular-celebrate 800ms ease-in-out infinite alternate;
+  color: var(--circular-tone);
+}
+
+.circular-final-screen h2,
+.circular-final-screen p {
+  margin: 0;
+}
+
+.circular-final-screen h2 {
+  color: var(--circular-tone);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.circular-final-screen > p {
+  color: var(--circular-muted);
+  font-weight: 800;
+}
+
+.circular-final-stats {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+
+.circular-final-stats > div {
+  background: color-mix(in srgb, var(--circular-tone) 9%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--circular-tone) 22%, var(--circular-line));
+  border-radius: 16px;
+  display: grid;
+  gap: 5px;
+  padding: 12px 8px;
+}
+
+.circular-final-stats span {
+  color: var(--circular-muted);
+  font-size: 0.75rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.circular-final-stats strong {
+  color: var(--circular-tone);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.circular-final-screen .circular-session-progress {
+  text-align: left;
+  width: 100%;
+}
+
+.circular-final-actions {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
 .circular-setup-shell,
 .circular-settings-card,
 .circular-status-panel,
@@ -68,7 +149,16 @@
 .circular-settings-card {
   display: grid;
   gap: 14px;
+  margin-inline: auto;
+  max-width: 950px;
   padding: clamp(16px, 2vw, 22px);
+  width: 100%;
+}
+
+.circular-setup-start-button {
+  margin-inline: auto;
+  max-width: 950px;
+  width: 100%;
 }
 
 .circular-section-heading,
@@ -93,20 +183,22 @@
 .circular-difficulty-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .circular-difficulty-grid button {
+  align-content: center;
   align-items: center;
-  background: #f8fafc;
-  border: 2px solid #b8c7d9;
+  background: color-mix(in srgb, var(--card-tone) 4%, #ffffff);
+  border: 2px solid color-mix(in srgb, var(--card-tone) 38%, #b8c7d9);
   border-radius: 22px;
   color: var(--circular-ink);
   cursor: pointer;
   display: grid;
   gap: 6px;
-  min-height: 150px;
-  padding: 12px;
+  justify-items: center;
+  min-height: 168px;
+  padding: 16px;
   transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
@@ -116,7 +208,7 @@
 }
 
 .circular-difficulty-grid button.is-selected {
-  background: color-mix(in srgb, var(--card-tone) 12%, #ffffff);
+  background: color-mix(in srgb, var(--card-tone) 14%, #ffffff);
   border-color: var(--card-tone);
   box-shadow: 0 16px 30px color-mix(in srgb, var(--card-tone) 22%, transparent);
 }
@@ -143,9 +235,10 @@
   gap: 2px;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  height: 54px;
+  height: 48px;
   justify-items: center;
-  width: 68px;
+  margin-bottom: 4px;
+  width: 60px;
 }
 
 .circular-preview span {
@@ -170,7 +263,7 @@
   border-top: 1px solid var(--circular-line);
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   padding-top: 14px;
 }
 
@@ -473,6 +566,12 @@
   min-width: 0;
   outline: 0;
   padding: 0;
+}
+
+.circular-number-cell.is-correct input:disabled {
+  color: var(--circular-ink);
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .circular-number-cell input::-webkit-inner-spin-button,
@@ -783,6 +882,10 @@
     grid-template-columns: 1fr;
   }
 
+  .circular-custom-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .circular-side-panel {
     position: static;
   }
@@ -798,19 +901,18 @@
   }
 
   .circular-difficulty-grid,
-  .circular-custom-settings,
-  .circular-score-grid {
+  .circular-score-grid,
+  .circular-final-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .circular-custom-settings {
     grid-template-columns: 1fr;
   }
 
   .circular-difficulty-grid button {
-    grid-template-columns: auto 1fr;
-    min-height: 0;
+    min-height: 138px;
     text-align: left;
-  }
-
-  .circular-difficulty-grid button > .circular-preview {
-    grid-row: span 3;
   }
 
   .circular-workspace {
@@ -844,7 +946,8 @@
   .circular-board-transition.is-leaving .circular-board,
   .circular-board-transition.is-entering .circular-board,
   .circular-grid.is-changing-exercise,
-  .circular-session-slot.is-new {
+  .circular-session-slot.is-new,
+  .circular-final-screen > svg {
     animation: none;
   }
 }

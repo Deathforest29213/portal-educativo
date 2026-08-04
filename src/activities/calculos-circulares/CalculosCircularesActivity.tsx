@@ -2,7 +2,7 @@ import { CircleHelp, Sparkles, Trophy } from 'lucide-react'
 import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ActionButton } from '../../app/components/ActionButton'
 import { FeedbackBanner } from '../../app/components/FeedbackBanner'
-import { CIRCULAR_DIFFICULTIES, CIRCULAR_SESSION_ROUNDS, MAX_CIRCULAR_NUMBER, MAX_EMPTY_CELLS, MIN_CIRCULAR_NUMBER, MIN_EMPTY_CELLS, getCircularDifficulty } from './data/config'
+import { CIRCULAR_DIFFICULTIES, MAX_CIRCULAR_NUMBER, MAX_CIRCULAR_SESSION_GOAL, MAX_EMPTY_CELLS, MIN_CIRCULAR_NUMBER, MIN_CIRCULAR_SESSION_GOAL, MIN_EMPTY_CELLS, getCircularDifficulty } from './data/config'
 import { createCircularGameState, circularGameReducer, type CircularRoundResult } from './domain/gameState'
 import { createCircularPuzzle, getOperationSymbol, getRelatedLines } from './domain/puzzle'
 import type { CircularCellId, CircularLine, CircularLineId, CircularOperation } from './types'
@@ -29,6 +29,7 @@ export default function CalculosCircularesActivity() {
     customEmptyCells,
     customMaxNumber,
     customOperations,
+    customSessionGoal,
     difficultyKey,
     feedbackVersion,
     hintedLine,
@@ -37,6 +38,7 @@ export default function CalculosCircularesActivity() {
     roundResults,
     score,
     screen,
+    sessionGoal,
     streak,
     wrongCells,
   } = state
@@ -44,8 +46,9 @@ export default function CalculosCircularesActivity() {
     emptyCells: customEmptyCells,
     maxNumber: customMaxNumber,
     operations: customOperations,
+    sessionGoal: customSessionGoal,
   })
-  const solvedCount = [...puzzle.blanks].filter((cellId) => answers[cellId]?.trim() !== '').length
+  const solvedCount = [...puzzle.blanks].filter((cellId) => Boolean(answers[cellId]?.trim())).length
   const canStartCustom = customOperations.length > 0
   const isSessionCompleted = screen === 'session-completed'
   const isCompleted = screen !== 'playing'
@@ -65,7 +68,7 @@ export default function CalculosCircularesActivity() {
 
   function startGame() {
     if (difficultyKey === 'custom' && !canStartCustom) return
-    dispatch({ type: 'START_GAME', puzzle: createCircularPuzzle(difficulty) })
+    dispatch({ type: 'START_GAME', puzzle: createCircularPuzzle(difficulty), sessionGoal: difficulty.sessionGoal })
     setActiveCell(null)
   }
 
@@ -88,13 +91,18 @@ export default function CalculosCircularesActivity() {
     if (suggestedLine) dispatch({ type: 'SHOW_HINT', lineId: suggestedLine.id })
   }
 
+  function returnToMenu() {
+    dispatch({ type: 'BACK_TO_MENU' })
+    setActiveCell(null)
+  }
+
   if (screen === 'setup') {
     return (
       <section className="circular-calculations circular-calculations--setup" style={{ '--circular-tone': difficulty.tone } as CSSProperties}>
         <div className="circular-setup-shell">
           <div className="circular-hero">
-            <span className="task-badge">Matemática conectada</span>
-            <h2>Cálculos circulares</h2>
+            <span className="task-badge">Cálculos mentales</span>
+            <h2>Círculos mágicos</h2>
             <p>Completa los números que conectan las operaciones horizontales y verticales.</p>
           </div>
 
@@ -176,12 +184,26 @@ export default function CalculosCircularesActivity() {
                     />
                   </div>
                 </label>
+                <label>
+                  <span>Meta de sesión</span>
+                  <div>
+                    <small>De {MIN_CIRCULAR_SESSION_GOAL} a {MAX_CIRCULAR_SESSION_GOAL}</small>
+                    <input
+                      aria-label="Cantidad de círculos de la meta de sesión"
+                      max={MAX_CIRCULAR_SESSION_GOAL}
+                      min={MIN_CIRCULAR_SESSION_GOAL}
+                      onChange={(event) => dispatch({ type: 'SET_CUSTOM_SESSION_GOAL', value: Number(event.target.value) })}
+                      type="number"
+                      value={customSessionGoal}
+                    />
+                  </div>
+                </label>
                 {!canStartCustom ? <small className="circular-warning">Selecciona al menos una operación.</small> : null}
               </div>
             ) : null}
           </article>
 
-          <ActionButton disabled={difficultyKey === 'custom' && !canStartCustom} onClick={startGame}>
+          <ActionButton className="circular-setup-start-button" disabled={difficultyKey === 'custom' && !canStartCustom} onClick={startGame}>
             Comenzar actividad
           </ActionButton>
         </div>
@@ -189,17 +211,40 @@ export default function CalculosCircularesActivity() {
     )
   }
 
+  if (isSessionCompleted) {
+    return (
+      <section className="circular-calculations circular-calculations--final" style={{ '--circular-tone': difficulty.tone } as CSSProperties}>
+        <section className="circular-final-screen" aria-labelledby="circular-final-title">
+          <span className="task-badge">Cálculos mentales</span>
+          <Trophy aria-hidden="true" size={52} />
+          <h2 id="circular-final-title">¡Sesión completada!</h2>
+          <p>Completaste los {sessionGoal} círculos mágicos de esta sesión.</p>
+          <div className="circular-final-stats" aria-label="Resultados de la sesión">
+            <div><span>Puntos</span><strong>{score}</strong></div>
+            <div><span>Mejor racha</span><strong>{bestStreak}</strong></div>
+            <div><span>Meta</span><strong>{completedRounds}/{sessionGoal}</strong></div>
+          </div>
+          <SessionProgress isNewResult={false} results={roundResults} sessionGoal={sessionGoal} />
+          <div className="circular-final-actions">
+            <ActionButton onClick={startGame}>Nueva sesión</ActionButton>
+            <ActionButton onClick={returnToMenu} variant="secondary">Volver al menú</ActionButton>
+          </div>
+        </section>
+      </section>
+    )
+  }
+
   return (
     <section className="circular-calculations circular-calculations--play" style={{ '--circular-tone': difficulty.tone } as CSSProperties}>
       <div className="activity-back-row">
-        <ActionButton onClick={() => dispatch({ type: 'BACK_TO_MENU' })} variant="quiet">
+        <ActionButton onClick={returnToMenu} variant="quiet">
           ← Volver al menú
         </ActionButton>
       </div>
 
       <header className="circular-status-panel">
         <div>
-          <h2>{isSessionCompleted ? '¡Meta completada!' : isCompleted ? '¡Círculo resuelto!' : 'Cálculos circulares'}</h2>
+          <h2>{isCompleted ? '¡Círculo resuelto!' : 'Círculos mágicos'}</h2>
           <p>{message}</p>
         </div>
         <div className="circular-score-grid" aria-label="Progreso de la actividad">
@@ -241,7 +286,7 @@ export default function CalculosCircularesActivity() {
             <CircleHelp aria-hidden="true" size={20} />
             <p>Completa las casillas y usa la ayuda para ver la ecuación conectada.</p>
           </section>
-          <SessionProgress isNewResult={isCompleted} results={roundResults} />
+          <SessionProgress isNewResult={isCompleted} results={roundResults} sessionGoal={sessionGoal} />
           {!isCompleted ? (
             <>
               <ActionButton disabled={!suggestedLine} onClick={showHint} variant="secondary">
@@ -253,18 +298,11 @@ export default function CalculosCircularesActivity() {
               </ActionButton>
               {wrongCells.size > 0 ? <FeedbackBanner title="Aún puedes corregir" tone="danger">Las casillas marcadas necesitan otro número. La racha se reinició, pero la ronda sigue abierta.</FeedbackBanner> : null}
             </>
-          ) : isSessionCompleted ? (
-            <section className="circular-session-completion-card">
-              <Trophy aria-hidden="true" size={32} />
-              <h3>¡Sesión terminada!</h3>
-              <p>Completaste los {CIRCULAR_SESSION_ROUNDS} círculos de esta actividad.</p>
-              <ActionButton onClick={startGame}>Nueva sesión</ActionButton>
-            </section>
           ) : (
             <section className="circular-completion-card">
               <Sparkles aria-hidden="true" size={32} />
               <h3>{streak > 0 ? `Racha de ${streak}` : 'Ronda superada'}</h3>
-              <p>Has resuelto {completedRounds} de {CIRCULAR_SESSION_ROUNDS} círculos en esta sesión.</p>
+              <p>Has resuelto {completedRounds} de {sessionGoal} círculos en esta sesión.</p>
               <ActionButton disabled={roundTransition !== 'idle'} onClick={nextRound}>
                 {roundTransition === 'idle' ? 'Nuevo círculo' : 'Preparando círculo…'}
               </ActionButton>
@@ -303,7 +341,7 @@ function CircularBoard({
 
   return (
     <div className={`circular-board-transition is-${roundTransition}`}>
-      <div className="circular-board" aria-label="Cuadrícula de cálculos circulares">
+      <div className="circular-board" aria-label="Cuadrícula de círculos mágicos">
         <div className={`circular-grid ${roundTransition === 'entering' ? 'is-changing-exercise' : ''}`}>
           {puzzle.lines.map((line) => <LineSymbols highlighted={hintedLine === line.id} key={line.id} line={line} />)}
           {Object.entries(puzzle.values).map(([cellId, value]) => {
@@ -322,6 +360,7 @@ function CircularBoard({
                 {isBlank ? (
                   <input
                     aria-label={`Casilla ${id}`}
+                    disabled={isCorrect}
                     inputMode="numeric"
                     maxLength={2}
                     onChange={(event) => onAnswerChange(id, event.target.value)}
@@ -365,15 +404,15 @@ function ScoreItem({ icon, label, value }: { icon: ReactNode; label: string; val
   return <div><span>{icon}</span><strong>{value}</strong><small>{label}</small></div>
 }
 
-function SessionProgress({ isNewResult, results }: { isNewResult: boolean; results: CircularRoundResult[] }) {
+function SessionProgress({ isNewResult, results, sessionGoal }: { isNewResult: boolean; results: CircularRoundResult[]; sessionGoal: number }) {
   return (
-    <section className="circular-session-progress" aria-label={`Meta de sesión: ${results.length} de ${CIRCULAR_SESSION_ROUNDS} círculos resueltos`}>
+    <section className="circular-session-progress" aria-label={`Meta de sesión: ${results.length} de ${sessionGoal} círculos resueltos`}>
       <div className="circular-session-progress-heading">
         <strong>Meta de sesión</strong>
-        <span>{results.length} de {CIRCULAR_SESSION_ROUNDS}</span>
+        <span>{results.length} de {sessionGoal}</span>
       </div>
       <div className="circular-session-slots">
-        {Array.from({ length: CIRCULAR_SESSION_ROUNDS }, (_, index) => {
+        {Array.from({ length: sessionGoal }, (_, index) => {
           const result = results[index]
           const label = result === 'star' ? 'Estrella' : result === 'effort' ? 'Esfuerzo' : result === 'challenge' ? 'Desafío' : 'Pendiente'
           const isLatest = isNewResult && index === results.length - 1

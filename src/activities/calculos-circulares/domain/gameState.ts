@@ -1,4 +1,4 @@
-import { CIRCULAR_SESSION_ROUNDS, CUSTOM_CIRCULAR_DEFAULTS, MAX_CIRCULAR_NUMBER, MAX_EMPTY_CELLS, MIN_CIRCULAR_NUMBER, MIN_EMPTY_CELLS } from '../data/config'
+import { CIRCULAR_SESSION_ROUNDS, CUSTOM_CIRCULAR_DEFAULTS, MAX_CIRCULAR_NUMBER, MAX_CIRCULAR_SESSION_GOAL, MAX_EMPTY_CELLS, MIN_CIRCULAR_NUMBER, MIN_CIRCULAR_SESSION_GOAL, MIN_EMPTY_CELLS } from '../data/config'
 import type {
   CircularCellId,
   CircularDifficultyKey,
@@ -18,6 +18,7 @@ export type CircularGameState = {
   customEmptyCells: number
   customMaxNumber: number
   customOperations: CircularOperation[]
+  customSessionGoal: number
   difficultyKey: CircularDifficultyKey
   feedbackVersion: number
   hadError: boolean
@@ -26,6 +27,7 @@ export type CircularGameState = {
   puzzle: CircularPuzzle
   roundAttempts: number
   roundResults: CircularRoundResult[]
+  sessionGoal: number
   score: number
   screen: CircularScreen
   streak: number
@@ -36,8 +38,9 @@ export type CircularCommand =
   | { type: 'SELECT_DIFFICULTY'; difficultyKey: CircularDifficultyKey }
   | { type: 'SET_CUSTOM_MAX_NUMBER'; value: number }
   | { type: 'SET_CUSTOM_EMPTY_CELLS'; value: number }
+  | { type: 'SET_CUSTOM_SESSION_GOAL'; value: number }
   | { type: 'TOGGLE_CUSTOM_OPERATION'; operation: CircularOperation }
-  | { type: 'START_GAME'; puzzle: CircularPuzzle }
+  | { type: 'START_GAME'; puzzle: CircularPuzzle; sessionGoal: number }
   | { type: 'ANSWER_CHANGED'; cellId: CircularCellId; value: string }
   | { type: 'SUBMIT_ROUND' }
   | { type: 'SHOW_HINT'; lineId: CircularLineId }
@@ -52,6 +55,7 @@ export function createCircularGameState(puzzle: CircularPuzzle): CircularGameSta
     customMaxNumber: CUSTOM_CIRCULAR_DEFAULTS.maxNumber,
     customEmptyCells: CUSTOM_CIRCULAR_DEFAULTS.emptyCells,
     customOperations: CUSTOM_CIRCULAR_DEFAULTS.operations,
+    customSessionGoal: CUSTOM_CIRCULAR_DEFAULTS.sessionGoal,
     puzzle,
     answers: {} as Record<CircularCellId, string>,
     correctCells: new Set(),
@@ -64,6 +68,7 @@ export function createCircularGameState(puzzle: CircularPuzzle): CircularGameSta
     completedRounds: 0,
     roundAttempts: 0,
     roundResults: [],
+    sessionGoal: CIRCULAR_SESSION_ROUNDS,
     hadError: false,
     message: 'Elige una dificultad para comenzar.',
   }
@@ -77,6 +82,8 @@ export function circularGameReducer(state: CircularGameState, command: CircularC
       return { ...state, customMaxNumber: clamp(command.value, MIN_CIRCULAR_NUMBER, MAX_CIRCULAR_NUMBER) }
     case 'SET_CUSTOM_EMPTY_CELLS':
       return { ...state, customEmptyCells: clamp(command.value, MIN_EMPTY_CELLS, MAX_EMPTY_CELLS) }
+    case 'SET_CUSTOM_SESSION_GOAL':
+      return { ...state, customSessionGoal: clamp(command.value, MIN_CIRCULAR_SESSION_GOAL, MAX_CIRCULAR_SESSION_GOAL) }
     case 'TOGGLE_CUSTOM_OPERATION':
       return {
         ...state,
@@ -89,6 +96,7 @@ export function circularGameReducer(state: CircularGameState, command: CircularC
         ...state,
         screen: 'playing',
         puzzle: command.puzzle,
+        sessionGoal: clamp(command.sessionGoal, MIN_CIRCULAR_SESSION_GOAL, MAX_CIRCULAR_SESSION_GOAL),
         answers: {} as Record<CircularCellId, string>,
         correctCells: new Set(),
         wrongCells: new Set(),
@@ -104,6 +112,7 @@ export function circularGameReducer(state: CircularGameState, command: CircularC
         message: 'Completa todas las casillas y revisa las operaciones conectadas.',
       }
     case 'ANSWER_CHANGED': {
+      if (state.correctCells.has(command.cellId)) return state
       const cleanValue = /^\d{0,2}$/.test(command.value) ? command.value : state.answers[command.cellId] ?? ''
       const wrongCells = new Set(state.wrongCells)
       const correctCells = new Set(state.correctCells)
@@ -146,6 +155,7 @@ export function circularGameReducer(state: CircularGameState, command: CircularC
         wrongCells: new Set(),
         roundAttempts: 0,
         roundResults: [],
+        sessionGoal: CIRCULAR_SESSION_ROUNDS,
         message: 'Elige una dificultad para comenzar.',
       }
     default:
@@ -188,7 +198,7 @@ function reviewRound(state: CircularGameState): CircularGameState {
 
   return {
     ...state,
-    screen: roundResults.length >= CIRCULAR_SESSION_ROUNDS ? 'session-completed' : 'completed',
+    screen: roundResults.length >= state.sessionGoal ? 'session-completed' : 'completed',
     correctCells,
     feedbackVersion: state.feedbackVersion + 1,
     wrongCells: new Set(),
