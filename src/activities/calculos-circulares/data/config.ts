@@ -3,7 +3,7 @@ import type { CircularActivitySettings, CircularDifficulty, CircularDifficultyKe
 export const MAX_CIRCULAR_NUMBER = 30
 export const MIN_CIRCULAR_NUMBER = 1
 export const MIN_EMPTY_CELLS = 3
-export const MAX_EMPTY_CELLS = 7
+export const MAX_EMPTY_CELLS = 5
 export const CIRCULAR_SESSION_ROUNDS = 5
 export const MIN_CIRCULAR_SESSION_GOAL = 1
 export const MAX_CIRCULAR_SESSION_GOAL = 10
@@ -30,9 +30,9 @@ export const CIRCULAR_DIFFICULTIES: CircularDifficulty[] = [
   {
     key: 'medium',
     label: 'Medio',
-    description: 'Cinco casillas y multiplicaciones para conectar operaciones.',
+    description: 'Cinco casillas para practicar sumas y restas con más desafío.',
     maxNumber: 20,
-    operations: ['+', '-', 'x'],
+    operations: ['+', '-'],
     emptyCells: 5,
     sessionGoal: CIRCULAR_SESSION_ROUNDS,
     rangeLabel: 'Números de 0 a 20',
@@ -41,10 +41,10 @@ export const CIRCULAR_DIFFICULTIES: CircularDifficulty[] = [
   {
     key: 'hard',
     label: 'Difícil',
-    description: 'Siete casillas y divisiones exactas hasta el 30.',
+    description: 'Cinco casillas con sumas, restas y multiplicaciones hasta el 30.',
     maxNumber: 30,
-    operations: ['+', '-', 'x', '/'],
-    emptyCells: 7,
+    operations: ['+', '-', 'x'],
+    emptyCells: 5,
     sessionGoal: CIRCULAR_SESSION_ROUNDS,
     rangeLabel: 'Números de 0 a 30',
     tone: '#c2410c',

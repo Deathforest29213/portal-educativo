@@ -163,6 +163,15 @@ export function circularGameReducer(state: CircularGameState, command: CircularC
   }
 }
 
+export function getCircularSubmissionFeedback(
+  puzzle: CircularPuzzle,
+  answers: Partial<Record<CircularCellId, string>>,
+): boolean | null {
+  const blankCells = [...puzzle.blanks]
+  if (blankCells.some((cellId) => !answers[cellId]?.trim())) return null
+  return blankCells.every((cellId) => Number(answers[cellId]) === puzzle.values[cellId])
+}
+
 function reviewRound(state: CircularGameState): CircularGameState {
   const blankCells = [...state.puzzle.blanks]
   const missing = blankCells.filter((cellId) => !state.answers[cellId]?.trim())

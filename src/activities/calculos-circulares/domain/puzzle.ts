@@ -1,4 +1,5 @@
 import { browserRandom, type RandomSource } from '../../../platform/random/RandomSource'
+import { MAX_EMPTY_CELLS, MIN_EMPTY_CELLS } from '../data/config'
 import type {
   CircularCellId,
   CircularLine,
@@ -29,6 +30,9 @@ export function createCircularPuzzle(settings: CircularSettings, random: RandomS
   if (settings.operations.length === 0) {
     throw new Error('Selecciona al menos una operación para crear un cálculo circular.')
   }
+  if (!Number.isInteger(settings.emptyCells) || settings.emptyCells < MIN_EMPTY_CELLS || settings.emptyCells > MAX_EMPTY_CELLS) {
+    throw new Error(`El círculo debe tener entre ${MIN_EMPTY_CELLS} y ${MAX_EMPTY_CELLS} casillas vacías.`)
+  }
 
   for (let attempt = 0; attempt < 2_400; attempt += 1) {
     const operations = LINE_IDS.map(() => random.pick(settings.operations))
@@ -40,7 +44,7 @@ export function createCircularPuzzle(settings: CircularSettings, random: RandomS
       lines: createLines(operations),
       blanks: pickBlanks(settings.emptyCells, random),
     }
-    if (hasUniqueCircularSolution(puzzle, settings.maxNumber)) return puzzle
+    if (isCircularPuzzleDeducible(puzzle, settings.maxNumber)) return puzzle
   }
 
   for (let attempt = 0; attempt < 1_200; attempt += 1) {
@@ -51,7 +55,7 @@ export function createCircularPuzzle(settings: CircularSettings, random: RandomS
       lines: createLines(LINE_IDS.map(() => fallbackOperation)),
       blanks: pickBlanks(settings.emptyCells, random),
     }
-    if (hasUniqueCircularSolution(puzzle, settings.maxNumber)) return puzzle
+    if (isCircularPuzzleDeducible(puzzle, settings.maxNumber)) return puzzle
   }
 
   throw new Error('No se pudo crear un círculo con una solución única para esta configuración.')
@@ -71,50 +75,19 @@ export function getOperationSymbol(operation: CircularOperation) {
 }
 
 export function hasUniqueCircularSolution(puzzle: CircularPuzzle, maxNumber: number) {
-  const visibleValues: Partial<Record<CircularCellId, number>> = {}
-  for (const cellId of CELL_IDS) {
-    if (!puzzle.blanks.has(cellId)) visibleValues[cellId] = puzzle.values[cellId]
-  }
+  return countCircularSolutions(puzzle, maxNumber) === 1
+}
+
+export function countCircularSolutions(puzzle: CircularPuzzle, maxNumber: number) {
+  const visibleValues = visibleCircularValues(puzzle)
+  if (Object.values(visibleValues).some((value) => !Number.isInteger(value) || value < 0 || value > maxNumber)) return 0
 
   let solutions = 0
-
-  function lineMatches(line: CircularLine, values: Partial<Record<CircularCellId, number>>) {
-    const [first, second, result] = line.cells.map((cellId) => values[cellId])
-    if (first === undefined || second === undefined || result === undefined) return null
-    return applyOperation(first, second, line.operation, maxNumber) === result
-  }
-
-  function propagate(values: Partial<Record<CircularCellId, number>>) {
-    let changed = true
-
-    while (changed) {
-      changed = false
-      for (const line of puzzle.lines) {
-        const unknown = line.cells.filter((cellId) => values[cellId] === undefined)
-        const completeLine = lineMatches(line, values)
-        if (completeLine === false) return null
-        if (unknown.length !== 1) continue
-
-        const cellId = unknown[0]
-        const possibilities: number[] = []
-        for (let value = 0; value <= maxNumber; value += 1) {
-          if (lineMatches(line, { ...values, [cellId]: value })) possibilities.push(value)
-        }
-        if (possibilities.length === 0) return null
-        if (possibilities.length === 1) {
-          values[cellId] = possibilities[0]
-          changed = true
-        }
-      }
-    }
-
-    return values
-  }
 
   function search(values: Partial<Record<CircularCellId, number>>) {
     if (solutions > 1) return
 
-    const propagated = propagate({ ...values })
+    const propagated = propagateCircularValues(puzzle, maxNumber, values)
     if (!propagated) return
 
     const unresolved = [...puzzle.blanks].filter((cellId) => propagated[cellId] === undefined)
@@ -123,19 +96,72 @@ export function hasUniqueCircularSolution(puzzle: CircularPuzzle, maxNumber: num
       return
     }
 
-    const nextCell = unresolved.sort((first, second) => relatedKnownCount(second, propagated) - relatedKnownCount(first, propagated))[0]
+    const nextCell = unresolved.sort((first, second) => relatedKnownCount(puzzle, second, propagated) - relatedKnownCount(puzzle, first, propagated))[0]
     for (let value = 0; value <= maxNumber; value += 1) {
       search({ ...propagated, [nextCell]: value })
       if (solutions > 1) return
     }
   }
 
-  function relatedKnownCount(cellId: CircularCellId, values: Partial<Record<CircularCellId, number>>) {
-    return getRelatedLines(cellId, puzzle.lines).reduce((count, line) => count + line.cells.filter((id) => id !== cellId && values[id] !== undefined).length, 0)
+  search(visibleValues)
+  return solutions
+}
+
+export function isCircularPuzzleDeducible(puzzle: CircularPuzzle, maxNumber: number) {
+  const resolved = propagateCircularValues(puzzle, maxNumber, visibleCircularValues(puzzle))
+  return resolved !== null
+    && [...puzzle.blanks].every((cellId) => resolved[cellId] !== undefined)
+    && hasUniqueCircularSolution(puzzle, maxNumber)
+}
+
+function visibleCircularValues(puzzle: CircularPuzzle) {
+  const visibleValues: Partial<Record<CircularCellId, number>> = {}
+  for (const cellId of CELL_IDS) {
+    if (!puzzle.blanks.has(cellId)) visibleValues[cellId] = puzzle.values[cellId]
+  }
+  return visibleValues
+}
+
+function propagateCircularValues(
+  puzzle: CircularPuzzle,
+  maxNumber: number,
+  initialValues: Partial<Record<CircularCellId, number>>,
+) {
+  const values = { ...initialValues }
+  let changed = true
+
+  while (changed) {
+    changed = false
+    for (const line of puzzle.lines) {
+      const unknown = line.cells.filter((cellId) => values[cellId] === undefined)
+      const completeLine = lineMatches(line, values, maxNumber)
+      if (completeLine === false) return null
+      if (unknown.length !== 1) continue
+
+      const cellId = unknown[0]
+      const possibilities: number[] = []
+      for (let value = 0; value <= maxNumber; value += 1) {
+        if (lineMatches(line, { ...values, [cellId]: value }, maxNumber)) possibilities.push(value)
+      }
+      if (possibilities.length === 0) return null
+      if (possibilities.length === 1) {
+        values[cellId] = possibilities[0]
+        changed = true
+      }
+    }
   }
 
-  search(visibleValues)
-  return solutions === 1
+  return values
+}
+
+function lineMatches(line: CircularLine, values: Partial<Record<CircularCellId, number>>, maxNumber: number) {
+  const [first, second, result] = line.cells.map((cellId) => values[cellId])
+  if (first === undefined || second === undefined || result === undefined) return null
+  return applyOperation(first, second, line.operation, maxNumber) === result
+}
+
+function relatedKnownCount(puzzle: CircularPuzzle, cellId: CircularCellId, values: Partial<Record<CircularCellId, number>>) {
+  return getRelatedLines(cellId, puzzle.lines).reduce((count, line) => count + line.cells.filter((id) => id !== cellId && values[id] !== undefined).length, 0)
 }
 
 function createValues(maxNumber: number, operations: CircularOperation[], random: RandomSource) {
