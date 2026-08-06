@@ -3,9 +3,10 @@ import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties, t
 import { ActionButton } from '../../app/components/ActionButton'
 import { FeedbackBanner } from '../../app/components/FeedbackBanner'
 import { CIRCULAR_DIFFICULTIES, MAX_CIRCULAR_NUMBER, MAX_CIRCULAR_SESSION_GOAL, MAX_EMPTY_CELLS, MIN_CIRCULAR_NUMBER, MIN_CIRCULAR_SESSION_GOAL, MIN_EMPTY_CELLS, getCircularDifficulty } from './data/config'
-import { createCircularGameState, circularGameReducer, type CircularRoundResult } from './domain/gameState'
+import { createCircularGameState, circularGameReducer, getCircularSubmissionFeedback, type CircularRoundResult } from './domain/gameState'
 import { createCircularPuzzle, getOperationSymbol, getRelatedLines } from './domain/puzzle'
-import type { CircularCellId, CircularLine, CircularLineId, CircularOperation } from './types'
+import type { CircularCellId, CircularDifficultyKey, CircularLine, CircularLineId, CircularOperation } from './types'
+import { playFeedbackSound } from '../guia-lenguaje/utils/audio'
 import './calculos-circulares.css'
 
 const OPERATIONS: CircularOperation[] = ['+', '-', 'x', '/']
@@ -91,6 +92,12 @@ export default function CalculosCircularesActivity() {
     if (suggestedLine) dispatch({ type: 'SHOW_HINT', lineId: suggestedLine.id })
   }
 
+  function reviewCircle() {
+    const feedback = getCircularSubmissionFeedback(puzzle, answers)
+    if (feedback !== null) playFeedbackSound(feedback)
+    dispatch({ type: 'SUBMIT_ROUND' })
+  }
+
   function returnToMenu() {
     dispatch({ type: 'BACK_TO_MENU' })
     setActiveCell(null)
@@ -126,7 +133,7 @@ export default function CalculosCircularesActivity() {
                     style={{ '--card-tone': item.tone } as CSSProperties}
                     type="button"
                   >
-                    <CircularPreview operations={cardDifficulty.operations} />
+                    <CircularPuzzlePreview difficultyKey={item.key} operations={cardDifficulty.operations} />
                     <strong>{item.label}</strong>
                     <span>{cardDifficulty.rangeLabel}</span>
                     <small>{cardDifficulty.emptyCells} casillas por completar</small>
@@ -275,6 +282,7 @@ export default function CalculosCircularesActivity() {
             hintedLine={hintedLine}
             onAnswerChange={(cellId, value) => dispatch({ type: 'ANSWER_CHANGED', cellId, value })}
             onCellFocus={setActiveCell}
+            onSubmit={reviewCircle}
             puzzle={puzzle}
             roundTransition={roundTransition}
             wrongCells={wrongCells}
@@ -293,7 +301,7 @@ export default function CalculosCircularesActivity() {
                 <CircleHelp aria-hidden="true" size={19} />
                 Destacar ecuación
               </ActionButton>
-              <ActionButton onClick={() => dispatch({ type: 'SUBMIT_ROUND' })}>
+              <ActionButton onClick={reviewCircle}>
                 Revisar círculo
               </ActionButton>
               {wrongCells.size > 0 ? <FeedbackBanner title="Aún puedes corregir" tone="danger">Las casillas marcadas necesitan otro número. La racha se reinició, pero la ronda sigue abierta.</FeedbackBanner> : null}
@@ -303,7 +311,7 @@ export default function CalculosCircularesActivity() {
               <Sparkles aria-hidden="true" size={32} />
               <h3>{streak > 0 ? `Racha de ${streak}` : 'Ronda superada'}</h3>
               <p>Has resuelto {completedRounds} de {sessionGoal} círculos en esta sesión.</p>
-              <ActionButton disabled={roundTransition !== 'idle'} onClick={nextRound}>
+              <ActionButton autoFocus disabled={roundTransition !== 'idle'} onClick={nextRound}>
                 {roundTransition === 'idle' ? 'Nuevo círculo' : 'Preparando círculo…'}
               </ActionButton>
             </section>
@@ -322,6 +330,7 @@ function CircularBoard({
   hintedLine,
   onAnswerChange,
   onCellFocus,
+  onSubmit,
   puzzle,
   roundTransition,
   wrongCells,
@@ -333,6 +342,7 @@ function CircularBoard({
   hintedLine: CircularLineId | null
   onAnswerChange: (cellId: CircularCellId, value: string) => void
   onCellFocus: (cellId: CircularCellId) => void
+  onSubmit: () => void
   puzzle: ReturnType<typeof createCircularPuzzle>
   roundTransition: RoundTransition
   wrongCells: Set<CircularCellId>
@@ -365,6 +375,11 @@ function CircularBoard({
                     maxLength={2}
                     onChange={(event) => onAnswerChange(id, event.target.value)}
                     onFocus={() => onCellFocus(id)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+                      event.preventDefault()
+                      onSubmit()
+                    }}
                     pattern="[0-9]*"
                     type="text"
                     value={answers[id] ?? ''}
@@ -390,14 +405,35 @@ function LineSymbols({ highlighted, line }: { highlighted: boolean; line: Circul
   )
 }
 
-function CircularPreview({ operations }: { operations: CircularOperation[] }) {
+function CircularPuzzlePreview({
+  difficultyKey,
+  operations,
+}: {
+  difficultyKey: CircularDifficultyKey
+  operations: CircularOperation[]
+}) {
+  const previewOperations = getPuzzlePreviewOperations(difficultyKey, operations)
+
   return (
-    <span className="circular-preview" aria-hidden="true">
-      <span>●</span><em>{getOperationSymbol(operations[0] ?? '+')}</em><span>●</span>
-      <em>{getOperationSymbol(operations[1] ?? '+')}</em><span>●</span><em>=</em>
-      <span>●</span><em>=</em><span>●</span>
+    <span className={`circular-puzzle-preview circular-puzzle-preview--${previewOperations.length}`} aria-hidden="true">
+      <span className="circular-puzzle-assembly">
+        {previewOperations.map((operation, index) => (
+          <span className={`circular-puzzle-piece circular-puzzle-piece--${index + 1}`} key={`${operation}-${index}`}>
+            <span className="circular-puzzle-operation">{operation === '?' ? '?' : getOperationSymbol(operation)}</span>
+          </span>
+        ))}
+      </span>
     </span>
   )
+}
+
+function getPuzzlePreviewOperations(
+  difficultyKey: CircularDifficultyKey,
+  customOperations: CircularOperation[],
+): Array<CircularOperation | '?'> {
+  if (difficultyKey === 'easy' || difficultyKey === 'medium') return ['+', '-']
+  if (difficultyKey === 'hard') return ['+', '-', 'x']
+  return customOperations.length > 0 ? customOperations : ['?']
 }
 
 function ScoreItem({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {

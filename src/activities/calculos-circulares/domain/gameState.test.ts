@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createCircularGameState, circularGameReducer } from './gameState'
+import { createCircularGameState, circularGameReducer, getCircularSubmissionFeedback } from './gameState'
 import { createCircularPuzzle } from './puzzle'
 import { SeededRandomSource } from '../../../platform/random/RandomSource'
 
@@ -7,6 +7,15 @@ const random = new SeededRandomSource(17)
 const puzzle = createCircularPuzzle({ maxNumber: 10, emptyCells: 3, operations: ['+'] }, random)
 
 describe('circularGameReducer', () => {
+  it('clasifica el sonido de revisión según las respuestas visibles', () => {
+    const blankCells = [...puzzle.blanks]
+    const completeAnswers = Object.fromEntries(blankCells.map((cellId) => [cellId, puzzle.values[cellId].toString()]))
+
+    expect(getCircularSubmissionFeedback(puzzle, {})).toBeNull()
+    expect(getCircularSubmissionFeedback(puzzle, { ...completeAnswers, [blankCells[0]]: '99' })).toBe(false)
+    expect(getCircularSubmissionFeedback(puzzle, completeAnswers)).toBe(true)
+  })
+
   it('permite corregir una ronda equivocada y solo crea racha en una ronda perfecta', () => {
     let state = circularGameReducer(createCircularGameState(puzzle), { type: 'START_GAME', puzzle, sessionGoal: 5 })
     const [firstBlank, ...otherBlanks] = [...puzzle.blanks]
@@ -87,6 +96,9 @@ describe('circularGameReducer', () => {
     expect(state.customMaxNumber).toBe(30)
     expect(state.customEmptyCells).toBe(3)
     expect(state.customSessionGoal).toBe(10)
+
+    state = circularGameReducer(state, { type: 'SET_CUSTOM_EMPTY_CELLS', value: 99 })
+    expect(state.customEmptyCells).toBe(5)
   })
 
   it('cierra una sesión personalizada al alcanzar su meta', () => {
